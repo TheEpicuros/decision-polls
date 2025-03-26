@@ -1,0 +1,39 @@
+# Operating System files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor files
+*.sublime-project
+*.sublime-workspace
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Composer
+vendor/
+composer.lock
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# WordPress specific
+wp-config.php
+wp-content/uploads/
+wp-content/upgrade/
+wp-content/backup-db/
+wp-content/cache/
+wp-content/backups/
+
+# Build files
+.sass-cache/
+*.css.map
+*.js.map
+
+# Logs
+*.log

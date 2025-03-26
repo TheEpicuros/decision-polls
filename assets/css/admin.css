@@ -1,0 +1,278 @@
+/**
+ * Decision Polls Admin Styles
+ */
+
+/* Admin panel styles */
+.decision-polls-admin-wrap {
+    margin: 20px 0;
+}
+
+.decision-polls-admin-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.decision-polls-admin-heading h1 {
+    margin: 0;
+}
+
+.decision-polls-admin-heading .page-title-action {
+    margin-left: 10px;
+}
+
+/* Admin table styles */
+.decision-polls-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: #fff;
+    border: 1px solid #ddd;
+}
+
+.decision-polls-table th,
+.decision-polls-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.decision-polls-table th {
+    background-color: #f9f9f9;
+    font-weight: 600;
+}
+
+.decision-polls-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+.decision-polls-table .row-actions {
+    color: #999;
+    font-size: 12px;
+    padding-top: 5px;
+    visibility: hidden;
+}
+
+.decision-polls-table tr:hover .row-actions {
+    visibility: visible;
+}
+
+.decision-polls-table .row-actions span {
+    margin-right: 8px;
+}
+
+/* Poll status indicators */
+.decision-polls-status {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.decision-polls-status-published {
+    background-color: #dff0d8;
+    color: #3c763d;
+}
+
+.decision-polls-status-draft {
+    background-color: #f2f2f2;
+    color: #666;
+}
+
+.decision-polls-status-closed {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* Poll form styles */
+.decision-polls-form-panel {
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.decision-polls-form-panel h2 {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+.decision-polls-form-field {
+    margin-bottom: 15px;
+}
+
+.decision-polls-form-field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.decision-polls-form-field input[type="text"],
+.decision-polls-form-field input[type="date"],
+.decision-polls-form-field textarea,
+.decision-polls-form-field select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+}
+
+.decision-polls-form-field textarea {
+    min-height: 100px;
+}
+
+.decision-polls-form-field .description {
+    color: #777;
+    font-style: italic;
+    margin-top: 5px;
+    font-size: 12px;
+}
+
+/* Poll settings metabox */
+.decision-polls-settings {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -10px;
+}
+
+.decision-polls-settings-column {
+    flex: 1;
+    min-width: 200px;
+    padding: 0 10px;
+    margin-bottom: 20px;
+}
+
+.decision-polls-checkbox-field {
+    margin-bottom: 10px;
+}
+
+.decision-polls-checkbox-field label {
+    font-weight: normal;
+}
+
+/* Answer options section */
+.decision-polls-answers {
+    margin-top: 20px;
+}
+
+.decision-polls-answer {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: #f9f9f9;
+    border: 1px solid #eee;
+    border-radius: 3px;
+}
+
+.decision-polls-answer-drag {
+    cursor: move;
+    margin-right: 10px;
+    color: #999;
+}
+
+.decision-polls-answer-content {
+    flex-grow: 1;
+}
+
+.decision-polls-answer-actions {
+    margin-left: 10px;
+}
+
+.decision-polls-answer-actions button {
+    background: transparent;
+    border: none;
+    color: #a00;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.decision-polls-add-answer {
+    margin-top: 10px;
+}
+
+/* Results preview section */
+.decision-polls-results-preview {
+    margin-top: 20px;
+}
+
+.decision-polls-result-bar {
+    background: #f5f5f5;
+    height: 20px;
+    margin: 5px 0 15px 0;
+    position: relative;
+}
+
+.decision-polls-result-bar-inner {
+    background: #0073aa;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.decision-polls-result-text {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+}
+
+/* Admin dashboard widget */
+#decision-polls-dashboard-widget .inside {
+    padding: 0;
+    margin: 0;
+}
+
+.decision-polls-dashboard-list {
+    border-top: 1px solid #eee;
+}
+
+.decision-polls-dashboard-list li {
+    padding: 8px 12px;
+    margin: 0;
+    border-bottom: 1px solid #eee;
+}
+
+.decision-polls-dashboard-list .poll-title {
+    font-weight: 600;
+}
+
+.decision-polls-dashboard-list .poll-meta {
+    color: #777;
+    font-size: 12px;
+    margin-top: 3px;
+}
+
+.decision-polls-dashboard-empty {
+    padding: 12px;
+    color: #777;
+    font-style: italic;
+}
+
+/* Settings page */
+.decision-polls-settings-table {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.decision-polls-settings-table th {
+    padding: 20px 10px 20px 0;
+    text-align: left;
+    vertical-align: top;
+    width: 200px;
+    font-weight: 600;
+}
+
+.decision-polls-settings-table td {
+    padding: 15px 10px;
+    vertical-align: middle;
+}
+
+.decision-polls-settings-table .description {
+    color: #777;
+    font-style: italic;
+    margin-top: 5px;
+    font-size: 12px;
+}

@@ -1,0 +1,174 @@
+/**
+ * Decision Polls Frontend Styles
+ */
+
+.decision-polls-container {
+    border: 1px solid #ddd;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+.decision-polls-loading {
+    text-align: center;
+    padding: 20px;
+    color: #888;
+}
+
+.decision-polls-error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.decision-polls-form-container {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+.decision-polls-question {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.decision-polls-description {
+    margin-bottom: 15px;
+    color: #666;
+}
+
+.decision-polls-options {
+    margin-bottom: 15px;
+}
+
+.decision-polls-option {
+    margin-bottom: 10px;
+    padding: 10px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.decision-polls-option:hover {
+    background-color: #e0e0e0;
+}
+
+.decision-polls-option.selected {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.decision-polls-submit {
+    background-color: #0073aa;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    font-size: 14px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.decision-polls-submit:hover {
+    background-color: #005f8b;
+}
+
+.decision-polls-results-container {
+    border: 1px solid #ddd;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+/* Ranked choice specific styles */
+.decision-polls-ranked-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.decision-polls-ranked-item {
+    padding: 10px;
+    background-color: #f5f5f5;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    cursor: move;
+}
+
+.decision-polls-ranked-item .handle {
+    margin-right: 10px;
+    color: #999;
+}
+
+.decision-polls-ranked-item .rank {
+    font-weight: bold;
+    margin-right: 10px;
+    width: 20px;
+}
+
+/* Form specific styles */
+.decision-polls-form-field {
+    margin-bottom: 15px;
+}
+
+.decision-polls-form-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.decision-polls-form-field input[type="text"],
+.decision-polls-form-field textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.decision-polls-form-field textarea {
+    min-height: 100px;
+}
+
+.decision-polls-form-answers {
+    margin-top: 20px;
+}
+
+.decision-polls-form-answer {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.decision-polls-form-answer input {
+    flex-grow: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.decision-polls-form-answer button {
+    margin-left: 10px;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+
+.decision-polls-form-add-answer {
+    margin-top: 10px;
+    background-color: #f0f0f0;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
