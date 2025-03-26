@@ -33,7 +33,7 @@ class Decision_Polls_Autoloader {
 		$this->add_directory( 'core/api' );
 		$this->add_directory( 'core/models' );
 		$this->add_directory( 'core/permissions' );
-		
+
 		// Register the autoloader.
 		spl_autoload_register( array( $this, 'autoload' ) );
 	}
@@ -58,14 +58,14 @@ class Decision_Polls_Autoloader {
 		if ( strpos( $class_name, 'Decision_Polls_' ) !== 0 ) {
 			return;
 		}
-		
+
 		// Convert class name to file name.
 		$file_name = $this->get_file_name_from_class( $class_name );
-		
+
 		// Search in all registered directories.
 		foreach ( $this->dirs as $dir ) {
 			$file = $dir . $file_name;
-			
+
 			if ( file_exists( $file ) ) {
 				require_once $file;
 				return;
@@ -82,10 +82,10 @@ class Decision_Polls_Autoloader {
 	private function get_file_name_from_class( $class_name ) {
 		// Strip the prefix.
 		$class_name = str_replace( 'Decision_Polls_', '', $class_name );
-		
+
 		// Convert to lowercase and replace underscores with hyphens.
 		$file_name = strtolower( str_replace( '_', '-', $class_name ) );
-		
+
 		// Add the class prefix and extension.
 		return 'class-' . $file_name . '.php';
 	}
