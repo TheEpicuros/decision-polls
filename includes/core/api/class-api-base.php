@@ -169,4 +169,13 @@ abstract class Decision_Polls_API_Base {
             ),
         );
     }
+    
+    /**
+     * Get API namespace
+     *
+     * @return string The API namespace.
+     */
+    public function get_namespace() {
+        return $this->namespace;
+    }
 }
