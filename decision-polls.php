@@ -201,7 +201,7 @@ final class Decision_Polls {
         
         // Localize script with API data
         wp_localize_script('decision-polls', 'decisionPollsAPI', array(
-            'url' => esc_url_raw(rest_url($this->api->get_endpoint('polls')->namespace)),
+            'url' => esc_url_raw(rest_url($this->api->get_endpoint('polls')->get_namespace())),
             'nonce' => wp_create_nonce('wp_rest')
         ));
     }
@@ -218,7 +218,7 @@ final class Decision_Polls {
         
         // Localize script with API data
         wp_localize_script('decision-polls-admin', 'decisionPollsAPI', array(
-            'url' => esc_url_raw(rest_url($this->api->get_endpoint('polls')->namespace)),
+            'url' => esc_url_raw(rest_url($this->api->get_endpoint('polls')->get_namespace())),
             'nonce' => wp_create_nonce('wp_rest')
         ));
     }
