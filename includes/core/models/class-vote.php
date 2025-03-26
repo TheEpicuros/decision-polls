@@ -103,7 +103,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
             return $has_voted > 0;
         } else {
             // For guests, check by IP
-            $user_ip = $_SERVER['REMOTE_ADDR'];
+            $user_ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field($_SERVER['REMOTE_ADDR']) : '';
             
             $has_voted = $this->wpdb->get_var(
                 $this->wpdb->prepare(
@@ -198,7 +198,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
         $votes_table = $this->get_table_name(self::TABLE_NAME);
         
         $user_id = is_user_logged_in() ? get_current_user_id() : null;
-        $user_ip = $_SERVER['REMOTE_ADDR'];
+        $user_ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field($_SERVER['REMOTE_ADDR']) : '';
         $now = current_time('mysql');
         
         // For ranked choice, the vote value corresponds to the preference order (1 = first choice)
