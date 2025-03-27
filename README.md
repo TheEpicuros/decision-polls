@@ -1,123 +1,111 @@
 # Decision Polls
 
-A modern WordPress polling plugin with simple, multiple choice, and ranked choice polls. Allows frontend users to create and participate in polls.
+A modern WordPress polling plugin that supports standard (single choice), multiple choice, and ranked choice polls with a clean, responsive design.
 
 ## Features
 
-- **Multiple Poll Types**
+- **Three poll types:**
   - Standard (single choice)
-  - Multiple choice
-  - Ranked choice
-
-- **Frontend Poll Creation**
-  - Users can create their own polls from the frontend
-  - Clean, responsive design
-  - Easy-to-use intuitive interface
-
-- **Modern Architecture**
-  - Well-organized, maintainable code
-  - REST API for all operations
+  - Multiple choice (select multiple options)
+  - Ranked choice (drag and drop ranking)
+  
+- **Frontend poll creation:**
+  - Allow your users to create their own polls
+  - Control permissions with options
+  
+- **Modern Design:**
+  - Clean, responsive interface
+  - Mobile-friendly voting and results
+  - Animated results display
+  
+- **Developer-friendly:**
+  - Well-organized modular code
   - Follows WordPress coding standards
-  - Responsive design that works on all devices
-
-## Installation
-
-1. Download the plugin zip file
-2. Upload to your WordPress site via Plugins > Add New > Upload Plugin
-3. Activate the plugin
+  - Extensible architecture
 
 ## Usage
 
 ### Shortcodes
 
-The plugin provides the following shortcodes:
+The plugin provides three main shortcodes:
 
-1. Display a poll:
+#### 1. Display a Single Poll
+
 ```
 [decision_poll id="123"]
 ```
 
-2. Display poll results:
-```
-[decision_poll_results id="123" type="bar"]
-```
+**Parameters:**
+- `id` (required): The ID of the poll to display
+- `show_results` (optional): Set to "true" to directly show results instead of the voting form
 
-3. Display poll creation form (frontend):
-```
-[decision_poll_form type="standard"]
-```
-
-### Creating a Poll in Admin
-
-1. Go to the Decision Polls menu in your WordPress admin
-2. Click "Add New"
-3. Fill in the poll details
-4. Publish the poll
-5. Use the provided shortcode to display it on your site
-
-### Creating a Poll on Frontend
-
-1. Place the `[decision_poll_form]` shortcode on any page
-2. Users can fill in the form to create a new poll
-3. On submission, users will receive a shortcode they can use
-
-## Testing
-
-To test the plugin:
-
-1. Create a new page in WordPress
-2. Add the following shortcodes to test different features:
+#### 2. Display a List of Polls
 
 ```
-<h2>Create a Poll</h2>
-[decision_poll_form]
-
-<h2>Example Poll</h2>
-[decision_poll id="1"]
-
-<h2>Poll Results</h2>
-[decision_poll_results id="1"]
+[decision_polls per_page="10" status="published" type="" author_id="0"]
 ```
 
-3. View the page to see the poll creation form, an example poll, and poll results
+**Parameters:**
+- `per_page` (optional): Number of polls to show per page (default: 10)
+- `status` (optional): Poll status to show (default: "published")
+- `type` (optional): Filter by poll type - "standard", "multiple", or "ranked"
+- `author_id` (optional): Show polls by a specific user
 
-## File Structure
+#### 3. Display Poll Creation Form
 
 ```
-decision-polls/
-├── assets/
-│   ├── css/
-│   │   ├── admin.css      # Admin styles
-│   │   └── frontend.css   # Frontend styles
-│   ├── js/
-│   │   ├── admin.js       # Admin scripts (placeholder)
-│   │   └── frontend.js    # Frontend scripts
-│   └── dist/              # For compiled React components
-├── includes/
-│   ├── admin/
-│   │   └── class-admin.php
-│   ├── core/
-│   │   ├── api/           # REST API endpoints
-│   │   ├── models/        # Data models
-│   │   ├── permissions/   # API permissions
-│   │   ├── class-api.php  # Main API coordinator
-│   │   └── class-install.php
-│   ├── frontend/
-│   │   └── class-frontend.php
-│   └── class-decision-polls-autoloader.php
-├── languages/             # For translations
-├── decision-polls.php     # Main plugin file
-├── API-STRUCTURE.md       # API documentation
-└── README.md
+[decision_poll_creator redirect="https://example.com/thank-you"]
 ```
 
-## Development
+**Parameters:**
+- `redirect` (optional): URL to redirect to after poll creation
 
-The plugin is organized into several components:
+### Admin Settings
 
-1. Core functionality in `includes/core/`
-2. Admin interface in `includes/admin/`
-3. Frontend in `includes/frontend/`
-4. API with endpoints in `includes/core/api/`
+Configure the plugin under **Settings > Decision Polls**:
 
-The API follows a modular structure as documented in API-STRUCTURE.md.
+- Enable/disable frontend poll creation
+- Require login for voting
+- Require login for poll creation
+- Default poll settings
+
+## Styling
+
+The plugin includes a well-structured CSS file with appropriate class names that follow a consistent naming convention. You can easily customize the appearance of polls by adding custom CSS to your theme or using the WordPress Customizer.
+
+## Developer Information
+
+### Custom Templates
+
+You can override the default templates by copying files from the `templates` directory to your theme's `decision-polls` directory.
+
+### Hooks and Filters
+
+The plugin provides various hooks and filters to extend its functionality:
+
+```php
+// Modify poll options
+add_filter('decision_polls_poll_options', 'my_custom_poll_options', 10, 2);
+
+// Custom validation
+add_filter('decision_polls_validate_vote', 'my_custom_validation', 10, 3);
+
+// After vote actions
+add_action('decision_polls_after_vote', 'my_after_vote_function', 10, 3);
+```
+
+### REST API
+
+The plugin registers custom REST API endpoints for getting poll data and submitting votes:
+
+- `GET /wp-json/decision-polls/v1/polls` - Get all polls
+- `GET /wp-json/decision-polls/v1/polls/{id}` - Get a specific poll
+- `POST /wp-json/decision-polls/v1/votes` - Submit a vote
+
+## License
+
+This plugin is licensed under the GPL v2 or later.
+
+## Credits
+
+Developed by Your Name.

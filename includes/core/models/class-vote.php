@@ -6,8 +6,8 @@
  */
 
 // If this file is called directly, abort.
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
@@ -60,7 +60,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
         $this->wpdb->query('START TRANSACTION');
         
         try {
-            $success = $this->record_vote($poll_id, $answers);
+            $success = $this->record_votes($poll_id, $answers);
             
             if (!$success) {
                 $this->wpdb->query('ROLLBACK');
@@ -132,7 +132,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
         
         // Get results from cache or calculate if not cached
         $results_table = $this->get_table_name(self::RESULTS_TABLE_NAME);
-        $answers_table = $this->get_table_name('decision_poll_answers');
+        $answers_table = $this->get_table_name(self::ANSWERS_TABLE_NAME);
         
         $results = $this->wpdb->get_results(
             $this->wpdb->prepare(
@@ -159,11 +159,18 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
             );
         }
         
-        // Get total votes
+        // Get total votes - fixed query to correctly count unique voters
         $votes_table = $this->get_table_name(self::TABLE_NAME);
         $total_votes = $this->wpdb->get_var(
             $this->wpdb->prepare(
-                "SELECT COUNT(DISTINCT user_id, user_ip) FROM $votes_table WHERE poll_id = %d",
+                "SELECT COUNT(DISTINCT voter_id) FROM (
+                    SELECT CASE 
+                        WHEN user_id > 0 THEN CONCAT('user:', user_id) 
+                        ELSE CONCAT('ip:', user_ip) 
+                    END as voter_id
+                    FROM $votes_table 
+                    WHERE poll_id = %d
+                ) AS voters",
                 $poll_id
             )
         );
@@ -188,13 +195,133 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
     }
 
     /**
-     * Record a vote
+     * Record a single vote
+     *
+     * @param int $poll_id Poll ID.
+     * @param int $answer_id Answer ID.
+     * @return bool Whether the vote was recorded.
+     */
+    public function record_vote($poll_id, $answer_id) {
+        $votes_table = $this->get_table_name(self::TABLE_NAME);
+        
+        $user_id = is_user_logged_in() ? get_current_user_id() : null;
+        $user_ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field($_SERVER['REMOTE_ADDR']) : '';
+        $now = current_time('mysql');
+        
+        // Insert vote
+        $inserted = $this->wpdb->insert(
+            $votes_table,
+            [
+                'poll_id' => $poll_id,
+                'answer_id' => $answer_id,
+                'user_id' => $user_id,
+                'user_ip' => $user_ip,
+                'vote_value' => 1,
+                'voted_at' => $now,
+            ]
+        );
+        
+        if (!$inserted) {
+            return false;
+        }
+        
+        // Update results cache
+        $this->update_results_cache($poll_id);
+        
+        return true;
+    }
+    
+    /**
+     * Record multiple votes for multiple choice polls
+     *
+     * @param int   $poll_id Poll ID.
+     * @param array $answer_ids Array of answer IDs.
+     * @return bool Whether the votes were recorded.
+     */
+    public function record_multiple_votes($poll_id, $answer_ids) {
+        $votes_table = $this->get_table_name(self::TABLE_NAME);
+        
+        $user_id = is_user_logged_in() ? get_current_user_id() : null;
+        $user_ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field($_SERVER['REMOTE_ADDR']) : '';
+        $now = current_time('mysql');
+        
+        // Process each answer
+        foreach ($answer_ids as $answer_id) {
+            // Insert vote
+            $inserted = $this->wpdb->insert(
+                $votes_table,
+                [
+                    'poll_id' => $poll_id,
+                    'answer_id' => (int) $answer_id,
+                    'user_id' => $user_id,
+                    'user_ip' => $user_ip,
+                    'vote_value' => 1,
+                    'voted_at' => $now,
+                ]
+            );
+            
+            if (!$inserted) {
+                return false;
+            }
+        }
+        
+        // Update results cache
+        $this->update_results_cache($poll_id);
+        
+        return true;
+    }
+    
+    /**
+     * Record ranked votes for ranked choice polls
+     *
+     * @param int   $poll_id Poll ID.
+     * @param array $ranked_answers Array of answer IDs in order of preference.
+     * @return bool Whether the votes were recorded.
+     */
+    public function record_ranked_votes($poll_id, $ranked_answers) {
+        $votes_table = $this->get_table_name(self::TABLE_NAME);
+        
+        $user_id = is_user_logged_in() ? get_current_user_id() : null;
+        $user_ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field($_SERVER['REMOTE_ADDR']) : '';
+        $now = current_time('mysql');
+        
+        // Process each answer with its rank
+        foreach ($ranked_answers as $rank => $answer_id) {
+            // Ranks start at 1 (first choice)
+            $vote_value = $rank + 1;
+            
+            // Insert vote
+            $inserted = $this->wpdb->insert(
+                $votes_table,
+                [
+                    'poll_id' => $poll_id,
+                    'answer_id' => (int) $answer_id,
+                    'user_id' => $user_id,
+                    'user_ip' => $user_ip,
+                    'vote_value' => $vote_value,
+                    'voted_at' => $now,
+                ]
+            );
+            
+            if (!$inserted) {
+                return false;
+            }
+        }
+        
+        // Update results cache
+        $this->update_results_cache($poll_id);
+        
+        return true;
+    }
+    
+    /**
+     * Record votes (internal method used by submit_vote)
      *
      * @param int   $poll_id Poll ID.
      * @param array $answers Answer IDs to vote for.
      * @return bool Whether the vote was recorded.
      */
-    private function record_vote($poll_id, $answers) {
+    private function record_votes($poll_id, $answers) {
         $votes_table = $this->get_table_name(self::TABLE_NAME);
         
         $user_id = is_user_logged_in() ? get_current_user_id() : null;

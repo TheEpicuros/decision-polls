@@ -6,172 +6,172 @@
  */
 
 // If this file is called directly, abort.
-if ( !defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
  * Poll Model class for handling poll data
  */
 class Decision_Polls_Poll extends Decision_Polls_Model {
-    /**
-     * Poll table name
-     */
-    const TABLE_NAME = 'decision_polls';
+	/**
+	 * Poll table name
+	 */
+	const TABLE_NAME = 'decision_polls';
 
-    /**
-     * Answers table name
-     */
-    const ANSWERS_TABLE_NAME = 'decision_poll_answers';
+	/**
+	 * Answers table name
+	 */
+	const ANSWERS_TABLE_NAME = 'decision_poll_answers';
 
-    /**
-     * Valid poll types
-     */
-    const VALID_POLL_TYPES = ['standard', 'multiple', 'ranked'];
+	/**
+	 * Valid poll types
+	 */
+	const VALID_POLL_TYPES = array( 'standard', 'multiple', 'ranked' );
 
-    /**
-     * Get a poll by ID
-     *
-     * @param int $id Poll ID.
-     * @return array|false Poll data or false if not found.
-     */
-    public function get($id) {
-        $poll_table = $this->get_table_name(self::TABLE_NAME);
-        $answers_table = $this->get_table_name(self::ANSWERS_TABLE_NAME);
+	/**
+	 * Get a poll by ID
+	 *
+	 * @param int $id Poll ID.
+	 * @return array|false Poll data or false if not found.
+	 */
+	public function get( $id ) {
+		$poll_table = $this->get_table_name( self::TABLE_NAME );
+		$answers_table = $this->get_table_name( self::ANSWERS_TABLE_NAME );
+		
+		// Get poll data.
+		$poll = $this->wpdb->get_row(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$poll_table} WHERE id = %d",
+				$id
+			)
+		);
+		
+		if ( ! $poll ) {
+			return false;
+		}
+		
+		// Get poll answers.
+		$answers = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$answers_table} WHERE poll_id = %d ORDER BY sort_order ASC",
+				$id
+			)
+		);
+		
+		// Format poll data for API.
+		$formatted_poll = $this->format_for_api( $poll );
+		
+		// Add answers to poll data.
+		$formatted_poll['answers'] = array_map( function( $answer ) {
+			return array(
+				'id' => (int) $answer->id,
+				'text' => $answer->answer_text,
+				'sort_order' => (int) $answer->sort_order
+			);
+		}, $answers );
         
-        // Get poll data
-        $poll = $this->wpdb->get_row(
-            $this->wpdb->prepare(
-                "SELECT * FROM $poll_table WHERE id = %d",
-                $id
-            )
-        );
-        
-        if (!$poll) {
-            return false;
-        }
-        
-        // Get poll answers
-        $answers = $this->wpdb->get_results(
-            $this->wpdb->prepare(
-                "SELECT * FROM $answers_table WHERE poll_id = %d ORDER BY sort_order ASC",
-                $id
-            )
-        );
-        
-        // Format poll data for API
-        $formatted_poll = $this->format_for_api($poll);
-        
-        // Add answers to poll data
-        $formatted_poll['answers'] = array_map(function($answer) {
-            return [
-                'id' => (int) $answer->id,
-                'text' => $answer->answer_text,
-                'sort_order' => (int) $answer->sort_order
-            ];
-        }, $answers);
-        
-        return $formatted_poll;
-    }
+		return $formatted_poll;
+	}
 
-    /**
-     * Get all polls
-     *
-     * @param array $args Query arguments.
-     * @return array Polls data.
-     */
-    public function get_all($args = []) {
-        $defaults = [
-            'per_page' => 10,
-            'page' => 1,
-            'status' => 'published',
-            'type' => '',
-        ];
+	/**
+	 * Get all polls
+	 *
+	 * @param array $args Query arguments.
+	 * @return array Polls data.
+	 */
+	public function get_all( $args = array() ) {
+		$defaults = array(
+			'per_page' => 10,
+			'page' => 1,
+			'status' => 'published',
+			'type' => '',
+		);
+		
+		$args = wp_parse_args( $args, $defaults );
+		
+		// Sanitize args.
+		$per_page = min( 50, (int) $args['per_page'] );
+		$page = (int) $args['page'];
+		$offset = ( $page - 1 ) * $per_page;
+		$status = $this->sanitize( $args['status'] );
+		$type = $this->sanitize( $args['type'] );
+		
+		$poll_table = $this->get_table_name( self::TABLE_NAME );
+		$answers_table = $this->get_table_name( self::ANSWERS_TABLE_NAME );
+		
+		// Build query.
+		$where = 'WHERE status = %s';
+		$where_args = array( $status );
+		
+		// Filter by type if specified.
+		if ( ! empty( $type ) ) {
+			$where .= ' AND poll_type = %s';
+			$where_args[] = $type;
+		}
         
-        $args = wp_parse_args($args, $defaults);
+		// Get total count for pagination.
+		$total_polls = $this->wpdb->get_var(
+			$this->wpdb->prepare(
+				"SELECT COUNT(*) FROM {$poll_table} {$where}",
+				$where_args
+			)
+		);
+		
+		// Get polls.
+		$polls = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$poll_table} {$where} ORDER BY created_at DESC LIMIT %d OFFSET %d",
+				array_merge( $where_args, array( $per_page, $offset ) )
+			)
+		);
         
-        // Sanitize args
-        $per_page = min(50, (int) $args['per_page']);
-        $page = (int) $args['page'];
-        $offset = ($page - 1) * $per_page;
-        $status = $this->sanitize($args['status']);
-        $type = $this->sanitize($args['type']);
+		// Get poll answers.
+		$poll_ids = wp_list_pluck( $polls, 'id' );
+		$answers = array();
+		
+		if ( ! empty( $poll_ids ) ) {
+			$placeholders = implode( ', ', array_fill( 0, count( $poll_ids ), '%d' ) );
+			$answers_query = $this->wpdb->prepare(
+				"SELECT * FROM {$answers_table} WHERE poll_id IN ({$placeholders}) ORDER BY sort_order ASC",
+				$poll_ids
+			);
+			
+			$all_answers = $this->wpdb->get_results( $answers_query );
+			
+			// Group answers by poll ID.
+			foreach ( $all_answers as $answer ) {
+				if ( ! isset( $answers[ $answer->poll_id ] ) ) {
+					$answers[ $answer->poll_id ] = array();
+				}
+				$answers[ $answer->poll_id ][] = $answer;
+			}
+		}
         
-        $poll_table = $this->get_table_name(self::TABLE_NAME);
-        $answers_table = $this->get_table_name(self::ANSWERS_TABLE_NAME);
-        
-        // Build query
-        $where = "WHERE status = %s";
-        $where_args = [$status];
-        
-        // Filter by type if specified
-        if (!empty($type)) {
-            $where .= " AND poll_type = %s";
-            $where_args[] = $type;
-        }
-        
-        // Get total count for pagination
-        $total_polls = $this->wpdb->get_var(
-            $this->wpdb->prepare(
-                "SELECT COUNT(*) FROM $poll_table $where",
-                $where_args
-            )
-        );
-        
-        // Get polls
-        $polls = $this->wpdb->get_results(
-            $this->wpdb->prepare(
-                "SELECT * FROM $poll_table $where ORDER BY created_at DESC LIMIT %d OFFSET %d",
-                array_merge($where_args, [$per_page, $offset])
-            )
-        );
-        
-        // Get poll answers
-        $poll_ids = wp_list_pluck($polls, 'id');
-        $answers = [];
-        
-        if (!empty($poll_ids)) {
-            $placeholders = implode(', ', array_fill(0, count($poll_ids), '%d'));
-            $answers_query = $this->wpdb->prepare(
-                "SELECT * FROM $answers_table WHERE poll_id IN ($placeholders) ORDER BY sort_order ASC",
-                $poll_ids
-            );
-            
-            $all_answers = $this->wpdb->get_results($answers_query);
-            
-            // Group answers by poll ID
-            foreach ($all_answers as $answer) {
-                if (!isset($answers[$answer->poll_id])) {
-                    $answers[$answer->poll_id] = [];
-                }
-                $answers[$answer->poll_id][] = $answer;
-            }
-        }
-        
-        // Format response
-        $formatted_polls = [];
-        foreach ($polls as $poll) {
-            $poll_answers = isset($answers[$poll->id]) ? $answers[$poll->id] : [];
-            
-            $formatted_poll = $this->format_for_api($poll);
-            
-            // Add answers to poll data
-            $formatted_poll['answers'] = array_map(function($answer) {
-                return [
-                    'id' => (int) $answer->id,
-                    'text' => $answer->answer_text,
-                    'sort_order' => (int) $answer->sort_order
-                ];
-            }, $poll_answers);
-            
-            $formatted_polls[] = $formatted_poll;
-        }
-        
-        return [
-            'polls' => $formatted_polls,
-            'total' => (int) $total_polls,
-            'total_pages' => ceil($total_polls / $per_page)
-        ];
+		// Format response.
+		$formatted_polls = array();
+		foreach ( $polls as $poll ) {
+			$poll_answers = isset( $answers[ $poll->id ] ) ? $answers[ $poll->id ] : array();
+			
+			$formatted_poll = $this->format_for_api( $poll );
+			
+			// Add answers to poll data.
+			$formatted_poll['answers'] = array_map( function( $answer ) {
+				return array(
+					'id' => (int) $answer->id,
+					'text' => $answer->answer_text,
+					'sort_order' => (int) $answer->sort_order,
+				);
+			}, $poll_answers );
+			
+			$formatted_polls[] = $formatted_poll;
+		}
+		
+		return array(
+			'polls' => $formatted_polls,
+			'total' => (int) $total_polls,
+			'total_pages' => ceil( $total_polls / $per_page ),
+		);
     }
 
     /**
@@ -182,45 +182,58 @@ class Decision_Polls_Poll extends Decision_Polls_Model {
      */
     public function create($data) {
         // Validate required fields
-        $required_fields = ['title', 'answers'];
-        foreach ($required_fields as $field) {
-            if (!isset($data[$field])) {
-                return new WP_Error('missing_field', sprintf('Missing required field: %s', $field), ['status' => 400]);
+        $required_fields = [ 'title', 'answers' ];
+        foreach ( $required_fields as $field ) {
+            if ( ! isset( $data[$field] ) ) {
+                return new WP_Error( 'missing_field', sprintf( 'Missing required field: %s', $field ), [ 'status' => 400 ] );
             }
         }
         
         // Validate poll type
-        $poll_type = isset($data['type']) ? $this->sanitize($data['type']) : 'standard';
-        if (!in_array($poll_type, self::VALID_POLL_TYPES)) {
-            return new WP_Error('invalid_type', 'Invalid poll type', ['status' => 400]);
+        $poll_type = isset( $data['type'] ) ? $this->sanitize( $data['type'] ) : 'standard';
+        if ( ! in_array( $poll_type, self::VALID_POLL_TYPES ) ) {
+            return new WP_Error( 'invalid_type', 'Invalid poll type', [ 'status' => 400 ] );
         }
         
         // Validate answers
         $answers = $data['answers'];
-        if (!is_array($answers) || count($answers) < 2) {
-            return new WP_Error('invalid_answers', 'Poll must have at least 2 answers', ['status' => 400]);
+        if ( ! is_array( $answers ) || count( $answers ) < 2 ) {
+            return new WP_Error( 'invalid_answers', 'Poll must have at least 2 answers', [ 'status' => 400 ] );
+        }
+        
+        // Strict check for existing poll with the same title to prevent duplicates
+        $poll_table = $this->get_table_name(self::TABLE_NAME);
+        $existing_poll = $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                "SELECT id FROM $poll_table WHERE title = %s",
+                $this->sanitize($data['title'])
+            )
+        );
+        
+        if ($existing_poll) {
+            return new WP_Error('duplicate_poll', 'A poll with this title already exists. Please use a different title.', ['status' => 400]);
         }
         
         // Format data for database
         $poll_data = $this->format_for_db($data);
         
         // Insert poll
-        $poll_table = $this->get_table_name(self::TABLE_NAME);
-        $this->wpdb->insert($poll_table, $poll_data);
+        $poll_table = $this->get_table_name( self::TABLE_NAME );
+        $this->wpdb->insert( $poll_table, $poll_data );
         $poll_id = $this->wpdb->insert_id;
         
-        if (!$poll_id) {
-            return new WP_Error('db_error', 'Failed to create poll', ['status' => 500]);
+        if ( ! $poll_id ) {
+            return new WP_Error( 'db_error', 'Failed to create poll', [ 'status' => 500 ] );
         }
         
         // Insert answers
-        $created_answers = $this->insert_answers($poll_id, $answers);
+        $created_answers = $this->insert_answers( $poll_id, $answers );
         
         // Prepare response
-        $response_data = array_merge($poll_data, [
+        $response_data = array_merge( $poll_data, [
             'id' => $poll_id,
             'answers' => $created_answers
-        ]);
+        ] );
         
         // Convert numeric booleans to actual booleans
         $response_data['is_private'] = (bool) $response_data['is_private'];
@@ -248,80 +261,80 @@ class Decision_Polls_Poll extends Decision_Polls_Model {
             )
         );
         
-        if (!$poll) {
-            return new WP_Error('not_found', 'Poll not found', ['status' => 404]);
+        if ( ! $poll ) {
+            return new WP_Error( 'not_found', 'Poll not found', [ 'status' => 404 ] );
         }
         
         // Validate poll type if present
-        if (isset($data['type'])) {
-            $poll_type = $this->sanitize($data['type']);
-            if (!in_array($poll_type, self::VALID_POLL_TYPES)) {
-                return new WP_Error('invalid_type', 'Invalid poll type', ['status' => 400]);
+        if ( isset( $data['type'] ) ) {
+            $poll_type = $this->sanitize( $data['type'] );
+            if ( ! in_array( $poll_type, self::VALID_POLL_TYPES ) ) {
+                return new WP_Error( 'invalid_type', 'Invalid poll type', [ 'status' => 400 ] );
             }
         }
         
         // Prepare update data
         $update_data = [];
         
-        if (isset($data['title'])) {
-            $update_data['title'] = $this->sanitize($data['title']);
+        if ( isset( $data['title'] ) ) {
+            $update_data['title'] = $this->sanitize( $data['title'] );
         }
         
-        if (isset($data['description'])) {
-            $update_data['description'] = $this->sanitize($data['description'], 'textarea');
+        if ( isset( $data['description'] ) ) {
+            $update_data['description'] = $this->sanitize( $data['description'], 'textarea' );
         }
         
-        if (isset($data['type'])) {
+        if ( isset( $data['type'] ) ) {
             $update_data['poll_type'] = $poll_type;
         }
         
-        if (isset($data['multiple_choices'])) {
-            $update_data['multiple_choices'] = $this->sanitize($data['multiple_choices'], 'int');
+        if ( isset( $data['multiple_choices'] ) ) {
+            $update_data['multiple_choices'] = $this->sanitize( $data['multiple_choices'], 'int' );
         }
         
-        if (isset($data['status'])) {
-            $update_data['status'] = $this->sanitize($data['status']);
+        if ( isset( $data['status'] ) ) {
+            $update_data['status'] = $this->sanitize( $data['status'] );
         }
         
-        if (isset($data['starts_at'])) {
-            $update_data['starts_at'] = $this->sanitize($data['starts_at']);
+        if ( isset( $data['starts_at'] ) ) {
+            $update_data['starts_at'] = $this->sanitize( $data['starts_at'] );
         }
         
-        if (isset($data['expires_at'])) {
-            $update_data['expires_at'] = $this->sanitize($data['expires_at']);
+        if ( isset( $data['expires_at'] ) ) {
+            $update_data['expires_at'] = $this->sanitize( $data['expires_at'] );
         }
         
-        if (isset($data['is_private'])) {
-            $update_data['is_private'] = $this->sanitize($data['is_private'], 'bool') ? 1 : 0;
+        if ( isset( $data['is_private'] ) ) {
+            $update_data['is_private'] = $this->sanitize( $data['is_private'], 'bool' ) ? 1 : 0;
         }
         
-        if (isset($data['allow_comments'])) {
-            $update_data['allow_comments'] = $this->sanitize($data['allow_comments'], 'bool') ? 1 : 0;
+        if ( isset( $data['allow_comments'] ) ) {
+            $update_data['allow_comments'] = $this->sanitize( $data['allow_comments'], 'bool' ) ? 1 : 0;
         }
         
-        if (isset($data['meta'])) {
+        if ( isset( $data['meta'] ) ) {
             $meta = $data['meta'];
-            $update_data['meta'] = is_array($meta) || is_object($meta) ? maybe_serialize($meta) : $meta;
+            $update_data['meta'] = is_array( $meta ) || is_object( $meta ) ? maybe_serialize( $meta ) : $meta;
         }
         
         // Update poll if there are changes
-        if (!empty($update_data)) {
-            $update_data['updated_at'] = current_time('mysql');
+        if ( ! empty( $update_data ) ) {
+            $update_data['updated_at'] = current_time( 'mysql' );
             
             $this->wpdb->update(
                 $poll_table,
                 $update_data,
-                ['id' => $id]
+                [ 'id' => $id ]
             );
         }
         
         // Handle answer updates
-        if (isset($data['answers']) && is_array($data['answers'])) {
-            $this->update_answers($id, $data['answers']);
+        if ( isset( $data['answers'] ) && is_array( $data['answers'] ) ) {
+            $this->update_answers( $id, $data['answers'] );
         }
         
         // Get updated poll data
-        return $this->get($id);
+        return $this->get( $id );
     }
 
     /**
@@ -344,7 +357,7 @@ class Decision_Polls_Poll extends Decision_Polls_Model {
             )
         );
         
-        if (!$poll) {
+        if ( ! $poll ) {
             return false;
         }
         

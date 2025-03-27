@@ -1,511 +1,454 @@
 /**
  * Decision Polls Frontend JavaScript
- * 
- * Handles loading polls, submitting votes, and displaying results.
+ *
+ * @package Decision_Polls
  */
 
 (function($) {
-    'use strict';
+	'use strict';
 
-    // Main Decision Polls object
-    window.DecisionPolls = {
-        init: function() {
-            this.initPolls();
-            this.initResults();
-            this.initForms();
-        },
+	// Initialize all polls on the page.
+	function initPolls() {
+		// Initialize standard polls.
+		$('.decision-poll-standard').each(function() {
+			initStandardPoll($(this));
+		});
 
-        /**
-         * Initialize polls
-         */
-        initPolls: function() {
-            $('.decision-polls-container').each(function() {
-                var $container = $(this);
-                var pollId = $container.data('poll-id');
-                var showResults = $container.data('show-results');
+		// Initialize multiple choice polls.
+		$('.decision-poll-multiple').each(function() {
+			initMultiplePoll($(this));
+		});
 
-                if (!pollId) {
-                    $container.html('<div class="decision-polls-error">Error: No poll ID specified.</div>');
-                    return;
-                }
+		// Initialize ranked choice polls.
+		$('.decision-poll-ranked').each(function() {
+			initRankedPoll($(this));
+		});
 
-                // Simulate loading from API
-                DecisionPolls.loadPoll($container, pollId);
-            });
-        },
+		// Initialize poll creator if present.
+		if ($('.decision-poll-creator').length) {
+			initPollCreator();
+		}
+	}
 
-        /**
-         * Load poll from API
-         * 
-         * @param {jQuery} $container Poll container
-         * @param {number} pollId Poll ID
-         */
-        loadPoll: function($container, pollId) {
-            // This would be an actual API call in the future
-            // For now, simulate with setTimeout to show loading state
-            setTimeout(function() {
-                // Example poll data (placeholder)
-                var pollData = {
-                    id: pollId,
-                    title: 'Example Poll #' + pollId,
-                    description: 'This is a placeholder poll that would normally be loaded from the API.',
-                    type: 'standard',
-                    answers: [
-                        { id: 1, text: 'Option 1' },
-                        { id: 2, text: 'Option 2' },
-                        { id: 3, text: 'Option 3' }
-                    ]
-                };
+	/**
+	 * Initialize a standard (single choice) poll.
+	 *
+	 * @param {Object} $container The poll container jQuery object.
+	 */
+	function initStandardPoll($container) {
+		var $form = $container.find('.decision-poll-form');
 
-                // Render poll
-                DecisionPolls.renderPoll($container, pollData);
-            }, 1000);
-        },
+		// Handle form submission.
+		$form.on('submit', function(e) {
+			e.preventDefault();
+			
+			var $message = $form.find('.decision-poll-message');
+			var $submit = $form.find('.decision-poll-submit');
+			var pollId = $form.find('input[name="poll_id"]').val();
+			var answerId = $form.find('input[name="poll_answer"]:checked').val();
+			
+			// Clear previous messages.
+			$message.empty().hide();
+			
+			// Disable submit button.
+			$submit.prop('disabled', true);
+			
+			// Check if an option is selected.
+			if (!answerId) {
+				$message.html('<p class="error">' + decisionPollsL10n.selectOptionError + '</p>').fadeIn();
+				$submit.prop('disabled', false);
+				return;
+			}
+			
+			// Submit vote via AJAX.
+			submitVote({
+				poll_id: pollId,
+				answer_id: answerId,
+				poll_type: 'standard'
+			}, $form);
+		});
+	}
 
-        /**
-         * Render poll
-         * 
-         * @param {jQuery} $container Poll container
-         * @param {object} pollData Poll data
-         */
-        renderPoll: function($container, pollData) {
-            var html = '';
-            
-            html += '<div class="decision-polls-question">' + pollData.title + '</div>';
-            
-            if (pollData.description) {
-                html += '<div class="decision-polls-description">' + pollData.description + '</div>';
-            }
-            
-            html += '<div class="decision-polls-options" data-poll-type="' + pollData.type + '">';
-            
-            if (pollData.type === 'ranked') {
-                // Render ranked choice poll
-                html += '<ul class="decision-polls-ranked-list">';
-                for (var i = 0; i < pollData.answers.length; i++) {
-                    var answer = pollData.answers[i];
-                    html += '<li class="decision-polls-ranked-item" data-answer-id="' + answer.id + '">';
-                    html += '<span class="handle">☰</span>';
-                    html += '<span class="rank">' + (i + 1) + '</span>';
-                    html += '<span class="text">' + answer.text + '</span>';
-                    html += '</li>';
-                }
-                html += '</ul>';
-            } else if (pollData.type === 'multiple') {
-                // Render multiple choice poll
-                for (var i = 0; i < pollData.answers.length; i++) {
-                    var answer = pollData.answers[i];
-                    html += '<div class="decision-polls-option" data-answer-id="' + answer.id + '">';
-                    html += '<label><input type="checkbox" name="poll_' + pollData.id + '[]" value="' + answer.id + '"> ' + answer.text + '</label>';
-                    html += '</div>';
-                }
-            } else {
-                // Render standard poll
-                for (var i = 0; i < pollData.answers.length; i++) {
-                    var answer = pollData.answers[i];
-                    html += '<div class="decision-polls-option" data-answer-id="' + answer.id + '">';
-                    html += '<label><input type="radio" name="poll_' + pollData.id + '" value="' + answer.id + '"> ' + answer.text + '</label>';
-                    html += '</div>';
-                }
-            }
-            
-            html += '</div>';
-            html += '<button class="decision-polls-submit" data-poll-id="' + pollData.id + '">Vote</button>';
-            
-            $container.html(html);
-            
-            // Attach event handlers
-            DecisionPolls.attachPollEvents($container, pollData);
-        },
+	/**
+	 * Initialize a multiple choice poll.
+	 *
+	 * @param {Object} $container The poll container jQuery object.
+	 */
+	function initMultiplePoll($container) {
+		var $form = $container.find('.decision-poll-form');
+		var maxChoices = parseInt($form.find('input[name="max_choices"]').val(), 10);
+		
+		// Validate multiple choices.
+		$form.find('.decision-poll-checkbox').on('change', function() {
+			var $checkboxes = $form.find('.decision-poll-checkbox:checked');
+			var $message = $form.find('.decision-poll-message');
+			
+			// If max choices is set and exceeded.
+			if (maxChoices > 0 && $checkboxes.length > maxChoices) {
+				// Uncheck the current checkbox.
+				$(this).prop('checked', false);
+				
+				// Show message.
+				$message.html('<p class="error">' + 
+					decisionPollsL10n.maxChoicesError.replace('{max}', maxChoices) + 
+					'</p>').fadeIn();
+				
+				// Hide message after 3 seconds.
+				setTimeout(function() {
+					$message.fadeOut();
+				}, 3000);
+			}
+		});
+		
+		// Handle form submission.
+		$form.on('submit', function(e) {
+			e.preventDefault();
+			
+			var $message = $form.find('.decision-poll-message');
+			var $submit = $form.find('.decision-poll-submit');
+			var pollId = $form.find('input[name="poll_id"]').val();
+			var $checkboxes = $form.find('.decision-poll-checkbox:checked');
+			var answerIds = $checkboxes.map(function() {
+				return $(this).val();
+			}).get();
+			
+			// Clear previous messages.
+			$message.empty().hide();
+			
+			// Disable submit button.
+			$submit.prop('disabled', true);
+			
+			// Check if at least one option is selected.
+			if (answerIds.length === 0) {
+				$message.html('<p class="error">' + decisionPollsL10n.selectOptionError + '</p>').fadeIn();
+				$submit.prop('disabled', false);
+				return;
+			}
+			
+			// Submit vote via AJAX.
+			submitVote({
+				poll_id: pollId,
+				answer_ids: answerIds,
+				poll_type: 'multiple'
+			}, $form);
+		});
+	}
 
-        /**
-         * Attach event handlers to poll
-         * 
-         * @param {jQuery} $container Poll container
-         * @param {object} pollData Poll data
-         */
-        attachPollEvents: function($container, pollData) {
-            var $submit = $container.find('.decision-polls-submit');
-            
-            // Vote button click
-            $submit.on('click', function(e) {
-                e.preventDefault();
-                
-                var selectedAnswers = [];
-                
-                if (pollData.type === 'ranked') {
-                    // Get ranked answers
-                    $container.find('.decision-polls-ranked-item').each(function(index) {
-                        selectedAnswers.push({
-                            id: $(this).data('answer-id'),
-                            rank: index + 1
-                        });
-                    });
-                } else if (pollData.type === 'multiple') {
-                    // Get multiple selected answers
-                    $container.find('input[type="checkbox"]:checked').each(function() {
-                        selectedAnswers.push(parseInt($(this).val(), 10));
-                    });
-                } else {
-                    // Get single selected answer
-                    var selectedValue = $container.find('input[type="radio"]:checked').val();
-                    if (selectedValue) {
-                        selectedAnswers.push(parseInt(selectedValue, 10));
-                    }
-                }
-                
-                if (selectedAnswers.length === 0) {
-                    alert('Please select an option.');
-                    return;
-                }
-                
-                // Submit vote
-                DecisionPolls.submitVote($container, pollData.id, selectedAnswers);
-            });
-            
-            // Make ranked items sortable (placeholder functionality)
-            if (pollData.type === 'ranked' && typeof $.fn.sortable !== 'undefined') {
-                $container.find('.decision-polls-ranked-list').sortable({
-                    handle: '.handle',
-                    update: function() {
-                        // Update rank numbers after sorting
-                        $(this).find('.decision-polls-ranked-item').each(function(index) {
-                            $(this).find('.rank').text(index + 1);
-                        });
-                    }
-                });
-            }
-        },
+	/**
+	 * Initialize a ranked choice poll.
+	 *
+	 * @param {Object} $container The poll container jQuery object.
+	 */
+	function initRankedPoll($container) {
+		var $form = $container.find('.decision-poll-form');
+		var $sortable = $container.find('.decision-poll-sortable');
+		
+		// Initialize sortable for drag and drop ranking.
+		$sortable.sortable({
+			handle: '.decision-poll-drag-handle',
+			axis: 'y',
+			containment: 'parent',
+			update: function(event, ui) {
+				// Update rank numbers and hidden inputs.
+				updateRanks($sortable);
+			}
+		});
+		
+		// Handle form submission.
+		$form.on('submit', function(e) {
+			e.preventDefault();
+			
+			var $message = $form.find('.decision-poll-message');
+			var $submit = $form.find('.decision-poll-submit');
+			var pollId = $form.find('input[name="poll_id"]').val();
+			var rankedAnswers = $form.find('input[name="ranked_answers[]"]').map(function() {
+				return $(this).val();
+			}).get();
+			
+			// Clear previous messages.
+			$message.empty().hide();
+			
+			// Disable submit button.
+			$submit.prop('disabled', true);
+			
+			// Submit vote via AJAX.
+			submitVote({
+				poll_id: pollId,
+				ranked_answers: rankedAnswers,
+				poll_type: 'ranked'
+			}, $form);
+		});
+	}
 
-        /**
-         * Submit vote to API
-         * 
-         * @param {jQuery} $container Poll container
-         * @param {number} pollId Poll ID
-         * @param {array} answers Selected answers
-         */
-        submitVote: function($container, pollId, answers) {
-            // Show loading state
-            $container.addClass('loading');
-            $container.find('.decision-polls-submit').prop('disabled', true).text('Submitting...');
-            
-            // This would be an actual API call in the future
-            // For now, simulate with setTimeout
-            setTimeout(function() {
-                // Simulate successful vote
-                $container.removeClass('loading');
-                
-                // Show results
-                DecisionPolls.showResults($container, pollId);
-            }, 1000);
-        },
+	/**
+	 * Update rank numbers and hidden inputs after sorting.
+	 *
+	 * @param {Object} $sortable The sortable container jQuery object.
+	 */
+	function updateRanks($sortable) {
+		$sortable.find('.decision-poll-option').each(function(index) {
+			var $option = $(this);
+			var answerId = $option.data('answer-id');
+			
+			// Update visible rank number.
+			$option.find('.decision-poll-option-rank').text(index + 1);
+			
+			// Update hidden input value.
+			$option.find('input[name="ranked_answers[]"]').val(answerId);
+		});
+	}
 
-        /**
-         * Show poll results
-         * 
-         * @param {jQuery} $container Poll container
-         * @param {number} pollId Poll ID
-         */
-        showResults: function($container, pollId) {
-            // This would load results from API
-            // For now, use placeholder results
-            var resultsData = {
-                total_votes: 42,
-                answers: [
-                    { id: 1, text: 'Option 1', votes: 18, percentage: 42.86 },
-                    { id: 2, text: 'Option 2', votes: 15, percentage: 35.71 },
-                    { id: 3, text: 'Option 3', votes: 9, percentage: 21.43 }
-                ]
-            };
-            
-            var html = '<div class="decision-polls-results">';
-            html += '<h3>Results</h3>';
-            html += '<p>Total votes: ' + resultsData.total_votes + '</p>';
-            
-            for (var i = 0; i < resultsData.answers.length; i++) {
-                var answer = resultsData.answers[i];
-                html += '<div class="decision-polls-result-item">';
-                html += '<div class="decision-polls-result-text">' + answer.text + ' (' + answer.votes + ' votes, ' + answer.percentage + '%)</div>';
-                html += '<div class="decision-polls-result-bar" style="width: ' + answer.percentage + '%;"></div>';
-                html += '</div>';
-            }
-            
-            html += '</div>';
-            
-            $container.html(html);
-        },
+	/**
+	 * Submit a vote via AJAX.
+	 *
+	 * @param {Object} data     The data to submit.
+	 * @param {Object} $form    The form jQuery object.
+	 */
+function submitVote(data, $form) {
+	var $message = $form.find('.decision-poll-message');
+	var $submit = $form.find('.decision-poll-submit');
+	var pollId = data.poll_id;
+	var pollType = data.poll_type || '';
+	
+	// Add nonce to data.
+	data.nonce = $('#decision_polls_nonce').val();
+	
+	// Remove poll_id from data as it's in the URL
+	delete data.poll_id;
+	
+	// Convert answer_id/answer_ids/ranked_answers to answers format
+	if (data.answer_id) {
+		data.answers = [data.answer_id];
+		delete data.answer_id;
+	} else if (data.answer_ids) {
+		data.answers = data.answer_ids;
+		delete data.answer_ids;
+	} else if (data.ranked_answers) {
+		data.answers = data.ranked_answers;
+		delete data.ranked_answers;
+	}
+	
+	$.ajax({
+		url: decisionPollsAPI.url + '/polls/' + pollId + '/vote',
+		method: 'POST',
+		beforeSend: function( xhr ) {
+			xhr.setRequestHeader( 'X-WP-Nonce', decisionPollsAPI.nonce );
+		},
+		data: data,
+			success: function(response) {
+				// Show success message.
+				$message.html('<p class="success">' + decisionPollsL10n.voteSuccess + '</p>').fadeIn();
+				
+				// For ranked choice polls, redirect to results page
+				if (pollType === 'ranked') {
+					// Get the site URL without the API path
+					var siteUrl = decisionPollsAPI.url.split('/wp-json/')[0];
+					// Redirect to results page
+					setTimeout(function() {
+						window.location.href = siteUrl + '/?poll_id=' + pollId + '&results=1';
+					}, 1000);
+					return;
+				}
+				
+				// If results are available, update the display.
+				if (response.data && response.data.results) {
+					// Delay slightly to let the user see the success message.
+					setTimeout(function() {
+						// Replace poll form with results.
+						var results = response.data.results;
+						var resultsHtml = '<div class="decision-poll-results-list">';
+						
+						// Add total votes.
+						resultsHtml += '<div class="decision-poll-total-votes">' + 
+							decisionPollsL10n.totalVotes.replace('{total}', results.total_votes) + 
+							'</div>';
+						
+						// Add results for each option.
+						$.each(results.results, function(index, result) {
+							resultsHtml += '<div class="decision-poll-result">' +
+								'<div class="decision-poll-result-text">' + result.text + '</div>' +
+								'<div class="decision-poll-result-bar-container">' +
+									'<div class="decision-poll-result-bar" style="width: ' + result.percentage + '%;">' +
+										'<span class="decision-poll-result-percentage">' + Math.round(result.percentage * 10) / 10 + '%</span>' +
+									'</div>' +
+								'</div>' +
+								'<div class="decision-poll-result-votes">' + 
+									decisionPollsL10n.votes.replace('{votes}', result.votes) + 
+								'</div>' +
+							'</div>';
+						});
+						
+						resultsHtml += '</div>';
+						
+						// Add footer with timestamp.
+						resultsHtml += '<div class="decision-poll-footer">' +
+							'<div class="decision-poll-last-updated">' +
+								decisionPollsL10n.lastUpdated.replace('{time}', new Date().toLocaleString()) +
+							'</div>' +
+						'</div>';
+						
+						// Replace form with results.
+						$form.fadeOut(300, function() {
+							$(this).replaceWith(resultsHtml);
+						});
+					}, 1000);
+				} else {
+					// Reload page after a delay to show results.
+					setTimeout(function() {
+						window.location.reload();
+					}, 1500);
+				}
+			},
+			error: function(xhr) {
+				// Re-enable submit button.
+				$submit.prop('disabled', false);
+				
+				// Show error message.
+				var errorMessage = xhr.responseJSON && xhr.responseJSON.message 
+					? xhr.responseJSON.message 
+					: decisionPollsL10n.voteError;
+				
+				$message.html('<p class="error">' + errorMessage + '</p>').fadeIn();
+			}
+		});
+	}
 
-        /**
-         * Initialize results displays
-         */
-        initResults: function() {
-            $('.decision-polls-results-container').each(function() {
-                var $container = $(this);
-                var pollId = $container.data('poll-id');
-                var chartType = $container.data('chart-type');
+	/**
+	 * Initialize poll creator form.
+	 */
+	function initPollCreator() {
+		var $creator = $('.decision-poll-creator');
+		var $form = $creator.find('.decision-poll-creator-form');
+		var $optionsContainer = $creator.find('.decision-poll-creator-options');
+		var $addButton = $creator.find('.decision-poll-creator-add-option');
+		var $typeSelect = $creator.find('select[name="poll_type"]');
+		var $multipleOptions = $creator.find('.decision-poll-multiple-options');
+		var $message = $creator.find('.decision-poll-message');
+		
+		// Initially hide or show multiple choice options based on selected type.
+		toggleMultipleOptions();
+		
+		// Add a new option field.
+		$addButton.on('click', function(e) {
+			e.preventDefault();
+			
+			var optionCount = $optionsContainer.find('.decision-poll-creator-option').length + 1;
+			var optionHtml = '<div class="decision-poll-creator-option">' +
+				'<input type="text" name="poll_option[]" placeholder="' + decisionPollsL10n.option + ' ' + optionCount + '" required>' +
+				'<button type="button" class="decision-poll-creator-remove-option">' + decisionPollsL10n.remove + '</button>' +
+				'</div>';
+			
+			$optionsContainer.append(optionHtml);
+		});
+		
+		// Remove an option field.
+		$optionsContainer.on('click', '.decision-poll-creator-remove-option', function() {
+			$(this).parent('.decision-poll-creator-option').remove();
+			
+			// Update placeholders for remaining options.
+			$optionsContainer.find('.decision-poll-creator-option').each(function(index) {
+				$(this).find('input').attr('placeholder', decisionPollsL10n.option + ' ' + (index + 1));
+			});
+		});
+		
+		// Toggle multiple choice options when type changes.
+		$typeSelect.on('change', toggleMultipleOptions);
+		
+		// Function to toggle multiple choices options visibility.
+		function toggleMultipleOptions() {
+			if ($typeSelect.val() === 'multiple') {
+				$multipleOptions.show();
+			} else {
+				$multipleOptions.hide();
+			}
+		}
+		
+		// Handle form submission.
+		$form.on('submit', function(e) {
+			e.preventDefault();
+			
+			var $submit = $form.find('button[type="submit"]');
+			
+			// Clear previous messages.
+			$message.empty().hide();
+			
+			// Disable submit button.
+			$submit.prop('disabled', true);
+			
+			// Get form data.
+			var formData = new FormData(this);
+			var data = {
+				title: formData.get('poll_title'),
+				description: formData.get('poll_description') || '',
+				type: formData.get('poll_type'),
+				status: 'published',
+				is_private: formData.get('poll_private') === 'on',
+				nonce: $('#decision_polls_creator_nonce').val()
+			};
+			
+			// Get options.
+			var options = [];
+			$optionsContainer.find('input[name="poll_option[]"]').each(function() {
+				var value = $(this).val().trim();
+				if (value) {
+					options.push(value);
+				}
+			});
+			
+			// Validate options.
+			if (options.length < 2) {
+				$message.html('<p class="error">' + decisionPollsL10n.pollCreateError + ': ' + 
+					 'At least two options are required.</p>').fadeIn();
+				$submit.prop('disabled', false);
+				return;
+			}
+			
+			data.answers = options;
+			
+			// Add multiple choices limit if applicable.
+			if (data.type === 'multiple') {
+				data.multiple_choices = parseInt(formData.get('poll_max_choices'), 10) || 0;
+			}
+			
+			$.ajax({
+				url: decisionPollsAPI.adminUrl || ajaxurl,
+				method: 'POST',
+				data: {
+					action: 'decision_polls_create_poll',
+					...data
+				},
+				success: function(response) {
+					if (response.success) {
+						// Show success message.
+						$message.html('<p class="success">' + decisionPollsL10n.pollCreated + '</p>').fadeIn();
+						
+						// Clear form.
+						$form[0].reset();
+						$optionsContainer.find('.decision-poll-creator-option').not(':first').remove();
+						
+						// Show link to view poll.
+						var pollUrl = decisionPollsL10n.pollLink.replace('POLL_ID', response.data.poll.id);
+						
+						$message.append('<p><a href="' + pollUrl + '" class="button">' + 
+							decisionPollsL10n.viewPoll + '</a></p>');
+					} else {
+						$message.html('<p class="error">' + decisionPollsL10n.pollCreateError + 
+							(response.data && response.data.message ? ': ' + response.data.message : '') + 
+							'</p>').fadeIn();
+						$submit.prop('disabled', false);
+					}
+				},
+				error: function() {
+					$message.html('<p class="error">' + decisionPollsL10n.pollCreateError + '</p>').fadeIn();
+					$submit.prop('disabled', false);
+				}
+			});
+		});
+	}
 
-                if (!pollId) {
-                    $container.html('<div class="decision-polls-error">Error: No poll ID specified.</div>');
-                    return;
-                }
-
-                // Load results
-                DecisionPolls.loadResults($container, pollId, chartType);
-            });
-        },
-
-        /**
-         * Load results from API
-         * 
-         * @param {jQuery} $container Results container
-         * @param {number} pollId Poll ID
-         * @param {string} chartType Chart type
-         */
-        loadResults: function($container, pollId, chartType) {
-            // This would be an actual API call in the future
-            // For now, simulate with setTimeout
-            setTimeout(function() {
-                // Example results data (placeholder)
-                var resultsData = {
-                    poll: {
-                        id: pollId,
-                        title: 'Example Poll #' + pollId
-                    },
-                    total_votes: 42,
-                    answers: [
-                        { id: 1, text: 'Option 1', votes: 18, percentage: 42.86 },
-                        { id: 2, text: 'Option 2', votes: 15, percentage: 35.71 },
-                        { id: 3, text: 'Option 3', votes: 9, percentage: 21.43 }
-                    ]
-                };
-
-                // Render results
-                DecisionPolls.renderResults($container, resultsData, chartType);
-            }, 1000);
-        },
-
-        /**
-         * Render results
-         * 
-         * @param {jQuery} $container Results container
-         * @param {object} resultsData Results data
-         * @param {string} chartType Chart type
-         */
-        renderResults: function($container, resultsData, chartType) {
-            var html = '';
-            
-            html += '<div class="decision-polls-results-title">' + resultsData.poll.title + '</div>';
-            html += '<div class="decision-polls-results-total">Total votes: ' + resultsData.total_votes + '</div>';
-            
-            html += '<div class="decision-polls-results-chart" data-chart-type="' + chartType + '">';
-            
-            for (var i = 0; i < resultsData.answers.length; i++) {
-                var answer = resultsData.answers[i];
-                html += '<div class="decision-polls-result-item">';
-                html += '<div class="decision-polls-result-text">' + answer.text + ' (' + answer.votes + ' votes, ' + answer.percentage + '%)</div>';
-                html += '<div class="decision-polls-result-bar" style="width: ' + answer.percentage + '%; background-color: ' + DecisionPolls.getBarColor(i) + '"></div>';
-                html += '</div>';
-            }
-            
-            html += '</div>';
-            
-            $container.html(html);
-        },
-
-        /**
-         * Get color for result bar
-         * 
-         * @param {number} index Answer index
-         * @return {string} Color
-         */
-        getBarColor: function(index) {
-            var colors = [
-                '#0073aa',
-                '#00a0d2',
-                '#39b54a',
-                '#72aee6',
-                '#d94f4f',
-                '#ea9142'
-            ];
-            
-            return colors[index % colors.length];
-        },
-
-        /**
-         * Initialize poll creation forms
-         */
-        initForms: function() {
-            $('.decision-polls-form-container').each(function() {
-                var $container = $(this);
-                var pollType = $container.data('poll-type');
-                var redirect = $container.data('redirect');
-
-                // Render form
-                DecisionPolls.renderForm($container, pollType, redirect);
-            });
-        },
-
-        /**
-         * Render poll creation form
-         * 
-         * @param {jQuery} $container Form container
-         * @param {string} pollType Poll type
-         * @param {string} redirect Redirect URL
-         */
-        renderForm: function($container, pollType, redirect) {
-            var html = '';
-            
-            html += '<form class="decision-polls-form" data-poll-type="' + pollType + '">';
-            
-            html += '<div class="decision-polls-form-field">';
-            html += '<label for="poll-title">Question</label>';
-            html += '<input type="text" id="poll-title" name="title" placeholder="Enter your question" required>';
-            html += '</div>';
-            
-            html += '<div class="decision-polls-form-field">';
-            html += '<label for="poll-description">Description (optional)</label>';
-            html += '<textarea id="poll-description" name="description" placeholder="Add more details about your question"></textarea>';
-            html += '</div>';
-            
-            html += '<div class="decision-polls-form-field">';
-            html += '<label>Poll Type</label>';
-            html += '<div class="decision-polls-form-radio">';
-            html += '<label><input type="radio" name="type" value="standard" ' + (pollType === 'standard' ? 'checked' : '') + '> Standard (single choice)</label>';
-            html += '</div>';
-            html += '<div class="decision-polls-form-radio">';
-            html += '<label><input type="radio" name="type" value="multiple" ' + (pollType === 'multiple' ? 'checked' : '') + '> Multiple choice</label>';
-            html += '</div>';
-            html += '<div class="decision-polls-form-radio">';
-            html += '<label><input type="radio" name="type" value="ranked" ' + (pollType === 'ranked' ? 'checked' : '') + '> Ranked choice</label>';
-            html += '</div>';
-            html += '</div>';
-            
-            html += '<div class="decision-polls-form-field">';
-            html += '<label>Answers</label>';
-            html += '<div class="decision-polls-form-answers">';
-            
-            // Add 3 empty answer fields by default
-            for (var i = 0; i < 3; i++) {
-                html += '<div class="decision-polls-form-answer">';
-                html += '<input type="text" name="answers[]" placeholder="Answer option ' + (i + 1) + '" required>';
-                if (i > 1) {
-                    html += '<button type="button" class="decision-polls-remove-answer">×</button>';
-                }
-                html += '</div>';
-            }
-            
-            html += '</div>';
-            html += '<button type="button" class="decision-polls-form-add-answer">+ Add Another Answer</button>';
-            html += '</div>';
-            
-            html += '<div class="decision-polls-form-field">';
-            html += '<button type="submit" class="decision-polls-submit">Create Poll</button>';
-            html += '</div>';
-            
-            html += '</form>';
-            
-            $container.html(html);
-            
-            // Attach form events
-            DecisionPolls.attachFormEvents($container);
-        },
-
-        /**
-         * Attach event handlers to form
-         * 
-         * @param {jQuery} $container Form container
-         */
-        attachFormEvents: function($container) {
-            var $form = $container.find('.decision-polls-form');
-            
-            // Add answer button
-            $container.on('click', '.decision-polls-form-add-answer', function() {
-                var $answers = $container.find('.decision-polls-form-answers');
-                var count = $answers.find('.decision-polls-form-answer').length;
-                
-                var $newAnswer = $('<div class="decision-polls-form-answer"></div>');
-                $newAnswer.append('<input type="text" name="answers[]" placeholder="Answer option ' + (count + 1) + '" required>');
-                $newAnswer.append('<button type="button" class="decision-polls-remove-answer">×</button>');
-                
-                $answers.append($newAnswer);
-            });
-            
-            // Remove answer button
-            $container.on('click', '.decision-polls-remove-answer', function() {
-                $(this).parent('.decision-polls-form-answer').remove();
-            });
-            
-            // Form submission
-            $form.on('submit', function(e) {
-                e.preventDefault();
-                
-                // Validate form
-                if (!$form[0].checkValidity()) {
-                    $form[0].reportValidity();
-                    return;
-                }
-                
-                // Get form data
-                var formData = {
-                    title: $form.find('[name="title"]').val(),
-                    description: $form.find('[name="description"]').val(),
-                    type: $form.find('[name="type"]:checked').val(),
-                    answers: []
-                };
-                
-                $form.find('[name="answers[]"]').each(function() {
-                    var value = $(this).val().trim();
-                    if (value) {
-                        formData.answers.push(value);
-                    }
-                });
-                
-                // Submit form
-                DecisionPolls.submitForm($container, formData);
-            });
-        },
-
-        /**
-         * Submit form to API
-         * 
-         * @param {jQuery} $container Form container
-         * @param {object} formData Form data
-         */
-        submitForm: function($container, formData) {
-            // Show loading state
-            $container.addClass('loading');
-            $container.find('.decision-polls-submit').prop('disabled', true).text('Creating...');
-            
-            // This would be an actual API call in the future
-            // For now, simulate with setTimeout
-            setTimeout(function() {
-                // Simulate successful creation
-                $container.removeClass('loading');
-                
-                // Show success message
-                var html = '<div class="decision-polls-success">';
-                html += '<h3>Poll Created Successfully!</h3>';
-                html += '<p>Your poll has been created. You can use this shortcode to display it:</p>';
-                html += '<div class="decision-polls-shortcode">[decision_poll id="123"]</div>';
-                html += '<p>To display just the results:</p>';
-                html += '<div class="decision-polls-shortcode">[decision_poll_results id="123"]</div>';
-                
-                // Add link to view the poll if redirect is specified
-                var redirect = $container.data('redirect');
-                if (redirect) {
-                    html += '<p><a href="' + redirect + '" class="decision-polls-view-poll">View Your Poll</a></p>';
-                }
-                
-                html += '</div>';
-                
-                $container.html(html);
-            }, 1500);
-        }
-    };
-
-    // Initialize on document ready
-    $(document).ready(function() {
-        DecisionPolls.init();
-    });
+	// Initialize on document ready.
+	$(document).ready(function() {
+		initPolls();
+	});
 
 })(jQuery);

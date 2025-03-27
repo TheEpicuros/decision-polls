@@ -128,34 +128,54 @@ final class Decision_Polls {
 		// Frontend.
 		$this->init_frontend();
 		
+		// Shortcodes.
+		$this->init_shortcodes();
+		
+		// AJAX handlers.
+		$this->init_ajax();
+		
 		// Assets.
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'register_admin_assets' ) );
 	}
 	
 	/**
-	 * Initialize API
+	 * Initialize API.
 	 */
 	private function init_api() {
 		$this->api = new Decision_Polls_API();
 	}
 	
 	/**
-	 * Initialize admin
+	 * Initialize admin.
 	 */
 	private function init_admin() {
 		$this->load_class( 'admin/class-admin' );
 	}
 	
 	/**
-	 * Initialize frontend
+	 * Initialize frontend.
 	 */
 	private function init_frontend() {
 		$this->load_class( 'frontend/class-frontend' );
 	}
 	
 	/**
-	 * Load a class file
+	 * Initialize shortcodes.
+	 */
+	private function init_shortcodes() {
+		require_once DECISION_POLLS_PLUGIN_DIR . 'includes/class-shortcodes.php';
+	}
+	
+	/**
+	 * Initialize AJAX handlers.
+	 */
+	private function init_ajax() {
+		require_once DECISION_POLLS_PLUGIN_DIR . 'includes/ajax.php';
+	}
+	
+	/**
+	 * Load a class file.
 	 *
 	 * @param string $class_path Relative path to the class file.
 	 * @return object|null Class instance or null.
@@ -173,7 +193,7 @@ final class Decision_Polls {
 	}
 	
 	/**
-	 * Convert file path to class name
+	 * Convert file path to class name.
 	 *
 	 * @param string $path File path.
 	 * @return string Class name.
@@ -187,14 +207,14 @@ final class Decision_Polls {
 	}
 	
 	/**
-	 * Register frontend assets
+	 * Register frontend assets.
 	 */
 	public function register_assets() {
 		// CSS.
 		wp_register_style( 'decision-polls', DECISION_POLLS_PLUGIN_URL . 'assets/css/frontend.css', array(), DECISION_POLLS_VERSION );
 		
 		// JavaScript (traditional).
-		wp_register_script( 'decision-polls', DECISION_POLLS_PLUGIN_URL . 'assets/js/frontend.js', array( 'jquery' ), DECISION_POLLS_VERSION, true );
+		wp_register_script( 'decision-polls', DECISION_POLLS_PLUGIN_URL . 'assets/js/frontend.js', array( 'jquery', 'jquery-ui-sortable' ), DECISION_POLLS_VERSION, true );
 		
 		// React components.
 		wp_register_script( 'decision-polls-ranked', DECISION_POLLS_PLUGIN_URL . 'assets/dist/ranked-poll.js', array( 'wp-element' ), DECISION_POLLS_VERSION, true );
@@ -208,6 +228,28 @@ final class Decision_Polls {
 			array(
 				'url' => esc_url_raw( rest_url( $this->api->get_endpoint( 'polls' )->get_namespace() ) ),
 				'nonce' => wp_create_nonce( 'wp_rest' ),
+				'adminUrl' => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
+			)
+		);
+		
+		// Localize script with translations.
+		wp_localize_script(
+			'decision-polls',
+			'decisionPollsL10n',
+			array(
+				'maxChoicesError' => esc_html__( 'You can select a maximum of {max} options.', 'decision-polls' ),
+				'selectOptionError' => esc_html__( 'Please select at least one option.', 'decision-polls' ),
+				'voteSuccess' => esc_html__( 'Your vote has been recorded. Thank you!', 'decision-polls' ),
+				'voteError' => esc_html__( 'There was an error submitting your vote. Please try again.', 'decision-polls' ),
+				'totalVotes' => esc_html__( 'Total votes: {total}', 'decision-polls' ),
+				'votes' => esc_html__( '{votes} votes', 'decision-polls' ),
+				'lastUpdated' => esc_html__( 'Last updated: {time}', 'decision-polls' ),
+				'pollCreated' => esc_html__( 'Poll created successfully!', 'decision-polls' ),
+				'pollCreateError' => esc_html__( 'An error occurred while creating the poll. Please try again.', 'decision-polls' ),
+				'option' => esc_html__( 'Option', 'decision-polls' ),
+				'remove' => esc_html__( 'Remove', 'decision-polls' ),
+				'pollLink' => esc_url( add_query_arg( 'poll_id', 'POLL_ID', get_permalink() ) ),
+				'viewPoll' => esc_html__( 'View your poll', 'decision-polls' ),
 			)
 		);
 	}
