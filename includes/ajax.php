@@ -192,6 +192,93 @@ add_action( 'wp_ajax_decision_polls_create_poll', 'decision_polls_ajax_create_po
 add_action( 'wp_ajax_nopriv_decision_polls_create_poll', 'decision_polls_ajax_create_poll' );
 
 /**
+ * Handle AJAX poll creation/update from admin page.
+ */
+function decision_polls_ajax_save_poll() {
+	// Check if user has capability to manage polls.
+	if ( ! current_user_can( 'create_decision_polls' ) ) {
+		wp_send_json_error( array( 'message' => esc_html__( 'You do not have permission to create or edit polls.', 'decision-polls' ) ) );
+	}
+	
+	// Verify nonce.
+	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'decision_polls_admin' ) ) {
+		wp_send_json_error( array( 'message' => esc_html__( 'Security check failed.', 'decision-polls' ) ) );
+	}
+	
+	// Parse the serialized form data
+	parse_str( $_POST['data'], $form_data );
+	
+	// Get poll data.
+	$poll_id = isset( $form_data['poll_id'] ) ? absint( $form_data['poll_id'] ) : 0;
+	$title = isset( $form_data['poll_title'] ) ? sanitize_text_field( wp_unslash( $form_data['poll_title'] ) ) : '';
+	$description = isset( $form_data['poll_description'] ) ? sanitize_textarea_field( wp_unslash( $form_data['poll_description'] ) ) : '';
+	$poll_type = isset( $form_data['poll_type'] ) ? sanitize_text_field( wp_unslash( $form_data['poll_type'] ) ) : 'standard';
+	$multiple_choices = isset( $form_data['poll_max_choices'] ) ? absint( $form_data['poll_max_choices'] ) : 0;
+	$status = isset( $form_data['poll_status'] ) ? sanitize_text_field( wp_unslash( $form_data['poll_status'] ) ) : 'published';
+	$is_private = isset( $form_data['poll_private'] );
+	
+	// Validate required fields.
+	if ( empty( $title ) ) {
+		wp_send_json_error( array( 'message' => esc_html__( 'Poll title is required.', 'decision-polls' ) ) );
+	}
+	
+	// Get answers.
+	$answers = isset( $form_data['poll_option'] ) ? $form_data['poll_option'] : array();
+	if ( ! is_array( $answers ) ) {
+		$answers = array( $answers );
+	}
+	
+	// Sanitize answers.
+	$sanitized_answers = array();
+	foreach ( $answers as $answer ) {
+		$sanitized_answer = sanitize_text_field( wp_unslash( $answer ) );
+		if ( ! empty( $sanitized_answer ) ) {
+			$sanitized_answers[] = $sanitized_answer;
+		}
+	}
+	
+	// Validate answers.
+	if ( count( $sanitized_answers ) < 2 ) {
+		wp_send_json_error( array( 'message' => esc_html__( 'At least two poll options are required.', 'decision-polls' ) ) );
+	}
+	
+	// Create poll data.
+	$poll_data = array(
+		'title'            => $title,
+		'description'      => $description,
+		'type'             => $poll_type,
+		'multiple_choices' => $multiple_choices,
+		'status'           => $status,
+		'is_private'       => $is_private,
+		'answers'          => $sanitized_answers,
+	);
+	
+	// Create or update poll.
+	$poll_model = new Decision_Polls_Poll();
+	if ( $poll_id ) {
+		// Update existing poll
+		$result = $poll_model->update( $poll_id, $poll_data );
+	} else {
+		// Create new poll
+		$result = $poll_model->create( $poll_data );
+	}
+	
+	// Check result.
+	if ( is_wp_error( $result ) ) {
+		wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+	}
+	
+	// Success response.
+	wp_send_json_success(
+		array(
+			'message' => $poll_id ? esc_html__( 'Poll updated successfully!', 'decision-polls' ) : esc_html__( 'Poll created successfully!', 'decision-polls' ),
+			'poll'    => $result,
+		)
+	);
+}
+add_action( 'wp_ajax_decision_polls_save_poll', 'decision_polls_ajax_save_poll' );
+
+/**
  * Handle poll deletion from admin area.
  */
 function decision_polls_ajax_delete_poll() {

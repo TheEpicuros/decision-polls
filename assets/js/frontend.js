@@ -239,16 +239,7 @@ function submitVote(data, $form) {
 				// Show success message.
 				$message.html('<p class="success">' + decisionPollsL10n.voteSuccess + '</p>').fadeIn();
 				
-				// For ranked choice polls, redirect to results page
-				if (pollType === 'ranked') {
-					// Get the site URL without the API path
-					var siteUrl = decisionPollsAPI.url.split('/wp-json/')[0];
-					// Redirect to results page
-					setTimeout(function() {
-						window.location.href = siteUrl + '/?poll_id=' + pollId + '&results=1';
-					}, 1000);
-					return;
-				}
+				// Process all poll types, with special handling for ranked choice
 				
 				// If results are available, update the display.
 				if (response.data && response.data.results) {
@@ -263,20 +254,58 @@ function submitVote(data, $form) {
 							decisionPollsL10n.totalVotes.replace('{total}', results.total_votes) + 
 							'</div>';
 						
-						// Add results for each option.
-						$.each(results.results, function(index, result) {
-							resultsHtml += '<div class="decision-poll-result">' +
-								'<div class="decision-poll-result-text">' + result.text + '</div>' +
-								'<div class="decision-poll-result-bar-container">' +
-									'<div class="decision-poll-result-bar" style="width: ' + result.percentage + '%;">' +
-										'<span class="decision-poll-result-percentage">' + Math.round(result.percentage * 10) / 10 + '%</span>' +
+						// Special handling for ranked choice polls
+						if (pollType === 'ranked') {
+							// Sort results by votes before displaying
+							results.results.sort(function(a, b) {
+								return b.votes - a.votes;
+							});
+							
+							// Add results for each option with rank indicators
+							$.each(results.results, function(index, result) {
+								var rankClass = '';
+								var rankLabel = '';
+								
+								// Add rank indicators for top choices
+								if (index === 0) {
+									rankClass = 'rank-first';
+									rankLabel = '<span class="rank-indicator rank-first">1st</span> ';
+								} else if (index === 1) {
+									rankClass = 'rank-second';
+									rankLabel = '<span class="rank-indicator rank-second">2nd</span> ';
+								} else if (index === 2) {
+									rankClass = 'rank-third';
+									rankLabel = '<span class="rank-indicator rank-third">3rd</span> ';
+								}
+								
+								resultsHtml += '<div class="decision-poll-result">' +
+									'<div class="decision-poll-result-text">' + rankLabel + result.text + '</div>' +
+									'<div class="decision-poll-result-bar-container">' +
+										'<div class="decision-poll-result-bar decision-poll-ranked-bar ' + rankClass + '" style="width: ' + result.percentage + '%;">' +
+											'<span class="decision-poll-result-percentage">' + Math.round(result.percentage * 10) / 10 + '%</span>' +
+										'</div>' +
 									'</div>' +
-								'</div>' +
-								'<div class="decision-poll-result-votes">' + 
-									decisionPollsL10n.votes.replace('{votes}', result.votes) + 
-								'</div>' +
-							'</div>';
-						});
+									'<div class="decision-poll-result-votes">' + 
+										decisionPollsL10n.votes.replace('{votes}', result.votes) + 
+									'</div>' +
+								'</div>';
+							});
+						} else {
+							// Standard display for other poll types
+							$.each(results.results, function(index, result) {
+								resultsHtml += '<div class="decision-poll-result">' +
+									'<div class="decision-poll-result-text">' + result.text + '</div>' +
+									'<div class="decision-poll-result-bar-container">' +
+										'<div class="decision-poll-result-bar" style="width: ' + result.percentage + '%;">' +
+											'<span class="decision-poll-result-percentage">' + Math.round(result.percentage * 10) / 10 + '%</span>' +
+										'</div>' +
+									'</div>' +
+									'<div class="decision-poll-result-votes">' + 
+										decisionPollsL10n.votes.replace('{votes}', result.votes) + 
+									'</div>' +
+								'</div>';
+							});
+						}
 						
 						resultsHtml += '</div>';
 						

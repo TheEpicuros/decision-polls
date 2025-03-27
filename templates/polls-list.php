@@ -75,16 +75,20 @@ $base_url = remove_query_arg( 'poll_page', $current_url );
 						</div>
 					<?php endif; ?>
 					
-					<!-- Display actual poll results -->
+					<!-- Display poll results -->
 					<?php
-					// Get poll results
-					$vote_model = new Decision_Polls_Vote();
-					$results = $vote_model->get_results( $poll_id );
+					// Load the vote model only if we need to get results
+					if ( ! isset( $poll['results'] ) || empty( $poll['results'] ) ) :
+						$vote_model = new Decision_Polls_Vote();
+						$results = $vote_model->get_results( $poll_id );
+					else :
+						$results = $poll['results'];
+					endif;
 					
 					// If we have results, show them
 					if ( isset( $results['results'] ) && ! empty( $results['results'] ) ) :
-						// Get total votes
-						$poll_total_votes = isset( $results['total_votes'] ) ? absint( $results['total_votes'] ) : 0;
+						// Get total votes from results which is more accurate
+						$total_votes = isset( $results['total_votes'] ) ? absint( $results['total_votes'] ) : 0;
 					?>
 						<div class="decision-polls-preview-results">
 							<?php foreach ( array_slice( $results['results'], 0, 3 ) as $result ) : ?>
@@ -210,9 +214,17 @@ $base_url = remove_query_arg( 'poll_page', $current_url );
 	
 	<?php if ( get_option( 'decision_polls_allow_frontend_creation', 1 ) ) : ?>
 		<div class="decision-polls-create-link">
-			<a href="<?php echo esc_url( add_query_arg( 'create_poll', '1', get_permalink() ) ); ?>" class="button decision-polls-create-button">
+			<a href="<?php echo esc_url( add_query_arg( 'create_poll', '1', remove_query_arg( 'poll_id', get_permalink() ) ) ); ?>" class="decision-polls-create-button">
 				<?php esc_html_e( 'Create New Poll', 'decision-polls' ); ?>
 			</a>
 		</div>
+		
+		<!-- Show poll creator form when create_poll parameter is present -->
+		<?php if ( isset( $_GET['create_poll'] ) ) : ?>
+			<?php
+			// Include poll creator template directly
+			include DECISION_POLLS_PLUGIN_DIR . 'templates/poll-creator.php';
+			?>
+		<?php endif; ?>
 	<?php endif; ?>
 </div>

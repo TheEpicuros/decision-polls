@@ -14,20 +14,20 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Vote Model class for handling vote data
  */
 class Decision_Polls_Vote extends Decision_Polls_Model {
-    /**
-     * Votes table name
-     */
-    const TABLE_NAME = 'decision_poll_votes';
+	/**
+	 * Votes table name
+	 */
+	const TABLE_NAME = 'decision_poll_votes';
 
-    /**
-     * Results table name
-     */
-    const RESULTS_TABLE_NAME = 'decision_poll_results';
-    
-    /**
-     * Answers table name
-     */
-    const ANSWERS_TABLE_NAME = 'decision_poll_answers';
+	/**
+	 * Results table name
+	 */
+	const RESULTS_TABLE_NAME = 'decision_poll_results';
+	
+	/**
+	 * Answers table name
+	 */
+	const ANSWERS_TABLE_NAME = 'decision_poll_answers';
 
     /**
      * Submit a vote
@@ -290,10 +290,15 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
         $user_ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field($_SERVER['REMOTE_ADDR']) : '';
         $now = current_time('mysql');
         
+        // In ranked choice, assign higher vote values to higher ranked choices
+        // First choice (index 0) gets the highest value
+        $total_answers = count($ranked_answers);
+        
         // Process each answer with its rank
         foreach ($ranked_answers as $rank => $answer_id) {
-            // Ranks start at 1 (first choice)
-            $vote_value = $rank + 1;
+            // Reverse the rank for vote value - highest rank gets highest value
+            // For example, in a poll with 3 options, first choice (rank 0) gets value 3
+            $vote_value = $total_answers - $rank;
             
             // Insert vote
             $inserted = $this->wpdb->insert(
@@ -390,6 +395,11 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
         $results_table = $this->get_table_name(self::RESULTS_TABLE_NAME);
         $answers_table = $this->get_table_name(self::ANSWERS_TABLE_NAME);
         
+        // Get poll type
+        $poll_model = new Decision_Polls_Poll();
+        $poll = $poll_model->get($poll_id);
+        $is_ranked = ($poll && $poll['type'] === 'ranked');
+        
         // Clear existing results
         $this->wpdb->delete($results_table, ['poll_id' => $poll_id]);
         
@@ -420,14 +430,35 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
         foreach ($answers as $answer) {
             $answer_id = $answer['id'];
             
-            $votes_count = $this->wpdb->get_var(
-                $this->wpdb->prepare(
-                    "SELECT COUNT(*) FROM $votes_table WHERE poll_id = %d AND answer_id = %d",
-                    $poll_id, $answer_id
-                )
-            );
+            if ($is_ranked) {
+                // For ranked polls, use sum of vote values instead of count
+                // Higher value = better rank
+                $votes_count = $this->wpdb->get_var(
+                    $this->wpdb->prepare(
+                        "SELECT SUM(vote_value) FROM $votes_table WHERE poll_id = %d AND answer_id = %d",
+                        $poll_id, $answer_id
+                    )
+                );
+                
+                // Calculate percentage based on max possible points
+                // If we have 3 voters and 5 choices, max points per choice is 3*5=15
+                $max_answers = count($answers);
+                $max_possible = $total_voters * $max_answers;
+                $percentage = ($votes_count / $max_possible) * 100;
+            } else {
+                // For standard/multiple polls, use count as before
+                $votes_count = $this->wpdb->get_var(
+                    $this->wpdb->prepare(
+                        "SELECT COUNT(*) FROM $votes_table WHERE poll_id = %d AND answer_id = %d",
+                        $poll_id, $answer_id
+                    )
+                );
+                
+                $percentage = ($votes_count / $total_voters) * 100;
+            }
             
-            $percentage = ($votes_count / $total_voters) * 100;
+            // Make sure votes_count is a number
+            $votes_count = $votes_count ? $votes_count : 0;
             
             // Insert result into cache
             $this->wpdb->insert(

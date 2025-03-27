@@ -405,11 +405,46 @@ class Decision_Polls_Admin {
                 }
             });
             
-            // Process form submission (you would need to add AJAX handling here in a full implementation)
+            // Process form submission
             $('#decision-polls-admin-form').on('submit', function(e) {
-                // For now, just show a message that this would be implemented in the full version
                 e.preventDefault();
-                alert('Form submission would be implemented in the full version. You can create polls from the frontend.');
+                
+                var $form = $(this);
+                var $submit = $form.find('#submit');
+                var data = $form.serialize();
+                
+                // Disable submit button
+                $submit.prop('disabled', true);
+                
+                // Show a loading indicator
+                $submit.val($submit.val() + '...');
+                
+                // Submit form data using AJAX
+                $.ajax({
+                    url: ajaxurl,  // WordPress global AJAX URL
+                    type: 'POST',
+                    data: {
+                        action: 'decision_polls_save_poll',
+                        data: data,
+                        nonce: $('#decision_polls_nonce').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            // Redirect to polls list
+                            window.location.href = 'admin.php?page=decision-polls&message=created';
+                        } else {
+                            // Show error
+                            alert(response.data.message || 'Failed to save poll. Please try again.');
+                            $submit.prop('disabled', false);
+                            $submit.val($submit.val().replace('...', ''));
+                        }
+                    },
+                    error: function() {
+                        alert('An error occurred. Please try again.');
+                        $submit.prop('disabled', false);
+                        $submit.val($submit.val().replace('...', ''));
+                    }
+                });
             });
         });
         </script>

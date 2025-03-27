@@ -110,17 +110,20 @@ class Decision_Polls_Shortcodes {
 	 * @return string Shortcode output.
 	 */
 	public static function polls_list_shortcode( $atts ) {
-		// If we have a specific poll_id in the URL, don't show the list
+		// IMPORTANT: Handle special cases first to prevent duplicates
+		
+		// Case 1: Display single poll if poll_id is present in the URL
 		if ( isset( $_GET['poll_id'] ) && absint( $_GET['poll_id'] ) > 0 ) {
-			// Return an individual poll instead of the list
 			return self::poll_shortcode( array( 'id' => absint( $_GET['poll_id'] ) ) );
 		}
 		
-		// If we're on a create poll page, don't show the list
+		// Case 2: Display poll creator if create_poll is in the URL
 		if ( isset( $_GET['create_poll'] ) ) {
-			return '';
+			// Return the poll creator shortcode output
+			return self::poll_creator_shortcode( array() );
 		}
 		
+		// If we're here, we're displaying the poll list
 		$atts = shortcode_atts(
 			array(
 				'per_page'  => 10,
@@ -139,32 +142,16 @@ class Decision_Polls_Shortcodes {
 			'type'     => sanitize_text_field( $atts['type'] ),
 		);
 		
-		// If author_id is specified, get polls for that user.
+		// Get appropriate polls
+		$poll_model = new Decision_Polls_Poll();
+		
 		if ( absint( $atts['author_id'] ) > 0 ) {
+			// Get polls for specific author
 			$author_id = absint( $atts['author_id'] );
-			
-			$poll_model = new Decision_Polls_Poll();
 			$polls_data = $poll_model->get_user_polls( $author_id, $args );
 		} else {
-			// Get all polls.
-			$poll_model = new Decision_Polls_Poll();
+			// Get all polls
 			$polls_data = $poll_model->get_all( $args );
-		}
-		
-		// Remove duplicate polls (since we might be processing the same query multiple times)
-		if ( isset( $polls_data['polls'] ) && is_array( $polls_data['polls'] ) ) {
-			$unique_polls = array();
-			$poll_ids = array();
-			
-			foreach ( $polls_data['polls'] as $poll ) {
-				if ( ! in_array( $poll['id'], $poll_ids, true ) ) {
-					$poll_ids[] = $poll['id'];
-					$unique_polls[] = $poll;
-				}
-			}
-			
-			$polls_data['polls'] = $unique_polls;
-			$polls_data['total'] = count( $unique_polls ); // Adjust total count
 		}
 		
 		// Enqueue required assets.
