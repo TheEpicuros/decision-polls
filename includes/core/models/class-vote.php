@@ -23,6 +23,11 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
      * Results table name
      */
     const RESULTS_TABLE_NAME = 'decision_poll_results';
+    
+    /**
+     * Answers table name
+     */
+    const ANSWERS_TABLE_NAME = 'decision_poll_answers';
 
     /**
      * Submit a vote
@@ -383,7 +388,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
     private function update_results_cache($poll_id) {
         $votes_table = $this->get_table_name(self::TABLE_NAME);
         $results_table = $this->get_table_name(self::RESULTS_TABLE_NAME);
-        $answers_table = $this->get_table_name('decision_poll_answers');
+        $answers_table = $this->get_table_name(self::ANSWERS_TABLE_NAME);
         
         // Clear existing results
         $this->wpdb->delete($results_table, ['poll_id' => $poll_id]);
