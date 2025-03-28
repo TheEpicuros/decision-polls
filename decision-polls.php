@@ -163,10 +163,10 @@ final class Decision_Polls {
 	private function init_frontend() {
 		$this->load_class( 'frontend/class-frontend' );
 
-		// Load custom endpoints for clean URLs
+		// Load custom endpoints for clean URLs.
 		require_once DECISION_POLLS_PLUGIN_DIR . 'includes/frontend/class-custom-endpoints.php';
 		
-		// Load UX enhancements & shortcode fixes
+		// Load UX enhancements & shortcode fixes.
 		require_once DECISION_POLLS_PLUGIN_DIR . 'ux-enhance.php';
 	}
 

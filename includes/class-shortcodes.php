@@ -27,17 +27,17 @@ class Decision_Polls_Shortcodes {
 
 		// Poll creation form shortcode.
 		add_shortcode( 'decision_poll_creator', array( __CLASS__, 'poll_creator_shortcode' ) );
-		
+
 		// Server-side redirection helper for fallback when JavaScript fails.
 		add_action( 'rest_after_insert_decision_polls_vote', array( __CLASS__, 'handle_redirect_after_vote' ), 10, 3 );
-		
+
 		// Process URL parameters on page load.
 		add_action( 'wp', array( __CLASS__, 'process_url_parameters' ) );
 	}
-	
+
 	/**
 	 * Process URL parameters for poll display.
-	 * 
+	 *
 	 * This helps with redirection issues by setting cookies that can be read later.
 	 */
 	public static function process_url_parameters() {
@@ -53,10 +53,10 @@ class Decision_Polls_Shortcodes {
 			}
 		}
 	}
-	
+
 	/**
 	 * Handle redirection after a vote is cast via the REST API.
-	 * 
+	 *
 	 * @param WP_REST_Response $response The response object.
 	 * @param object           $handler  The handler instance.
 	 * @param WP_REST_Request  $request  The request object.
@@ -67,23 +67,23 @@ class Decision_Polls_Shortcodes {
 		if ( ! isset( $request['poll_id'] ) ) {
 			return $response;
 		}
-		
+
 		$poll_id = absint( $request['poll_id'] );
-		
+
 		// Add redirection URL to the response for JavaScript fallback.
 		if ( isset( $response->data ) ) {
 			// Build the redirect URL.
-			$site_url = get_site_url();
+			$site_url  = get_site_url();
 			$clean_url = $site_url . '/poll/' . $poll_id . '/';
 			$query_url = $site_url . '/polls/?poll_id=' . $poll_id . '&show_results=1';
-			
+
 			// Determine which URL format to use based on whether permalinks are enabled.
 			$redirect_url = get_option( 'permalink_structure' ) ? $clean_url : $query_url;
-			
+
 			// Add the URL to the response for JavaScript to use.
 			$response->data['redirect_url'] = $redirect_url;
 		}
-		
+
 		return $response;
 	}
 
@@ -169,25 +169,27 @@ class Decision_Polls_Shortcodes {
 	 */
 	public static function polls_list_shortcode( $atts ) {
 		// IMPORTANT: Handle special cases - show only one view based on parameters
-		
+
 		// Case 1: Display single poll if poll_id is present in the URL
 		if ( isset( $_GET['poll_id'] ) && absint( $_GET['poll_id'] ) > 0 ) {
-			$poll_id = absint( $_GET['poll_id'] );
+			$poll_id      = absint( $_GET['poll_id'] );
 			$show_results = false;
-			
+
 			// Check if we should show results based on URL or cookie.
 			if ( isset( $_GET['show_results'] ) && '1' === $_GET['show_results'] ) {
 				$show_results = true;
-			} elseif ( isset( $_COOKIE['decision_polls_show_results_' . $poll_id] ) ) {
+			} elseif ( isset( $_COOKIE[ 'decision_polls_show_results_' . $poll_id ] ) ) {
 				$show_results = true;
 				// Clear the cookie since we've used it.
 				setcookie( 'decision_polls_show_results_' . $poll_id, '', time() - 3600, '/' );
 			}
-			
-			return self::poll_shortcode( array( 
-				'id' => $poll_id, 
-				'show_results' => $show_results 
-			) );
+
+			return self::poll_shortcode(
+				array(
+					'id'           => $poll_id,
+					'show_results' => $show_results,
+				)
+			);
 		}
 
 		// Case 2: Display poll creator if create_poll is in the URL
