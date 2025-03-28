@@ -209,7 +209,22 @@ function submitVote(data, $form) {
 	var $submit = $form.find('.decision-poll-submit');
 	var pollId = data.poll_id;
 	var pollType = data.poll_type || '';
-	var pollUrl = window.location.protocol + '//' + window.location.host + '/poll/' + pollId + '/';
+	
+	// Get the current URL to determine if we're using the clean URL format or not
+	var currentUrl = window.location.href;
+	var pollUrl;
+	
+	// Create the proper poll URL based on the current site structure
+	if (currentUrl.indexOf('/poll/') !== -1) {
+		// We're using the clean URL format
+		pollUrl = window.location.protocol + '//' + window.location.host + '/poll/' + pollId + '/';
+	} else {
+		// We might be using query parameters or shortcodes
+		// Try to keep the same URL structure but add a results parameter
+		pollUrl = currentUrl.split('?')[0] + '?poll_id=' + pollId + '&show_results=1';
+	}
+	
+	console.log('Poll URL for redirection: ' + pollUrl);
 	
 	// Add nonce to data.
 	data.nonce = $('#decision_polls_nonce').val();
@@ -323,9 +338,10 @@ function submitVote(data, $form) {
 						});
 					}, 1000);
 				} else {
-					// Reload page after a delay to show results.
+					// Navigate to the poll results page instead of just reloading
 					setTimeout(function() {
-						window.location.reload();
+						// Try direct navigation to ensure we're showing results
+						window.location.href = pollUrl;
 					}, 1500);
 				}
 			},
