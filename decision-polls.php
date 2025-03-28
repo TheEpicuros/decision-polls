@@ -27,6 +27,11 @@ define( 'DECISION_POLLS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'DECISION_POLLS_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 define( 'DECISION_POLLS_PATH', DECISION_POLLS_PLUGIN_DIR );
 
+// Debug helper (remove in production).
+if ( file_exists( DECISION_POLLS_PLUGIN_DIR . 'dp-debug.php' ) ) {
+	require_once DECISION_POLLS_PLUGIN_DIR . 'dp-debug.php';
+}
+
 // Autoloader.
 require_once DECISION_POLLS_PLUGIN_DIR . 'includes/class-decision-polls-autoloader.php';
 
