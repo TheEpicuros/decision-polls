@@ -28,10 +28,11 @@ $poll_container_id = 'decision-poll-' . $poll_id;
 		<?php endif; ?>
 	</div>
 
-	<form class="decision-poll-form" action="" method="post">
+	<form class="decision-poll-form" action="<?php echo apply_filters( 'decision_polls_form_action', '' ); ?>" method="post">
 		<?php wp_nonce_field( 'decision_polls_vote', 'decision_polls_nonce' ); ?>
 		<input type="hidden" name="poll_id" value="<?php echo esc_attr( $poll_id ); ?>">
 		<input type="hidden" name="poll_type" value="standard">
+		<input type="hidden" name="decision_polls_direct_vote" value="1">
 		
 		<div class="decision-poll-options">
 			<?php if ( ! empty( $poll['answers'] ) && is_array( $poll['answers'] ) ) : ?>

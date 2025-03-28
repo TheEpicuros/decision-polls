@@ -168,6 +168,9 @@ final class Decision_Polls {
 		
 		// Load UX enhancements & shortcode fixes.
 		require_once DECISION_POLLS_PLUGIN_DIR . 'ux-enhance.php';
+		
+		// Load direct vote handler for JS fallback.
+		require_once DECISION_POLLS_PLUGIN_DIR . 'includes/direct-vote.php';
 	}
 
 	/**
