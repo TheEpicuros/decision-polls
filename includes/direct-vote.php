@@ -94,8 +94,9 @@ class Decision_Polls_Direct_Vote {
 			wp_die( esc_html__( 'Failed to submit vote. Please try again.', 'decision-polls' ) );
 		}
 
-		// Set a cookie for results display.
+		// Set cookies for results display and refresh fallback.
 		setcookie( 'decision_polls_show_results_' . $poll_id, '1', time() + 3600, '/' );
+		setcookie( 'decision_polls_refresh_results', '1', time() + 3600, '/' );
 
 		// Get redirect URL.
 		$site_url     = get_site_url();

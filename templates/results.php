@@ -10,6 +10,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// Add last-resort meta refresh if this was reached by a direct vote action and there's no JavaScript
+if ( isset( $_COOKIE['decision_polls_refresh_results'] ) ) {
+	$poll_id = isset( $poll['id'] ) ? absint( $poll['id'] ) : 0;
+	if ( $poll_id > 0 ) {
+		// Clear the cookie
+		setcookie( 'decision_polls_refresh_results', '', time() - 3600, '/' );
+		// Add meta refresh as absolute last resort (5 second delay)
+		echo '<meta http-equiv="refresh" content="5;url=' . esc_url( add_query_arg( array( 'poll_id' => $poll_id, 'show_results' => '1', 'ts' => time() ), get_permalink() ) ) . '">';
+	}
+}
+
 // Ensure variables are available.
 if ( ! isset( $poll ) || empty( $poll ) || ! isset( $results ) || empty( $results ) ) {
 	return;
