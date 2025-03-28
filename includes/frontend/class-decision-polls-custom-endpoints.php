@@ -216,22 +216,59 @@ class Decision_Polls_Custom_Endpoints {
 	 * @return string The modified template path.
 	 */
 	public static function load_poll_create_template( $template ) {
-		// Render header.
-		get_header();
-
-		echo '<div class="decision-polls-page-container">';
-		echo '<h1 class="entry-title">' . esc_html__( 'Create a New Poll', 'decision-polls' ) . '</h1>';
-
-		// Display the poll creator form.
-		echo do_shortcode( '[decision_poll_creator]' );
-
-		echo '</div>';
-
-		// Render footer.
-		get_footer();
-
-		// Return a blank template to prevent further output.
-		return DECISION_POLLS_PLUGIN_DIR . 'templates/blank-template.php';
+		global $wp_query, $post;
+		
+		// Create a dummy post to prevent errors in WordPress core functions.
+		$dummy_post_id = -999; // Use a negative ID to ensure it doesn't conflict with any real post.
+		$dummy_post = self::create_dummy_post(
+			$dummy_post_id, 
+			__( 'Create a New Poll', 'decision-polls' ),
+			'',
+			'page'
+		);
+		
+		// Set the global post object and setup post data.
+		$post = $dummy_post;
+		$wp_query->post = $dummy_post;
+		$wp_query->posts = array( $dummy_post );
+		$wp_query->queried_object = $dummy_post;
+		$wp_query->queried_object_id = $dummy_post_id;
+		$wp_query->found_posts = 1;
+		$wp_query->post_count = 1;
+		
+		// Setup post data.
+		setup_postdata( $dummy_post );
+		
+		// Override template include filter with lower priority.
+		add_filter( 'template_include', function( $orig_template ) {
+			remove_all_filters( 'the_content' );
+			add_filter( 'the_content', function( $content ) {
+				// Our custom content.
+				return '<div class="decision-polls-page-container">' .
+					'<h1 class="entry-title">' . esc_html__( 'Create a New Poll', 'decision-polls' ) . '</h1>' .
+					do_shortcode( '[decision_poll_creator]' ) .
+					'</div>';
+			});
+			
+			// Try to use the page template from the theme.
+			$possible_templates = array(
+				'page.php',
+				'single.php',
+				'index.php'
+			);
+			
+			foreach ( $possible_templates as $possible_template ) {
+				$path = get_template_directory() . '/' . $possible_template;
+				if ( file_exists( $path ) ) {
+					return $path;
+				}
+			}
+			
+			// Fallback to the original template.
+			return $orig_template;
+		}, 99999 );
+		
+		return $template;
 	}
 
 	/**
@@ -241,7 +278,7 @@ class Decision_Polls_Custom_Endpoints {
 	 * @return string The modified template path.
 	 */
 	public static function load_single_poll_template( $template ) {
-		global $wp_query;
+		global $wp_query, $post;
 		$poll_id = isset( $wp_query->query_vars['poll_id'] ) ? absint( $wp_query->query_vars['poll_id'] ) : 0;
 
 		if ( $poll_id > 0 ) {
@@ -250,13 +287,10 @@ class Decision_Polls_Custom_Endpoints {
 			$poll       = $poll_model->get( $poll_id );
 
 			if ( ! $poll ) {
-				// If poll doesn't exist, try to load the 404 template
-				if ( file_exists( get_theme_file_path( '404.php' ) ) ) {
-					return get_theme_file_path( '404.php' );
-				}
-                
-				// Don't modify the template if poll not found
-				return $template;
+				// If poll doesn't exist, set 404 and use 404 template
+				$wp_query->set_404();
+				status_header( 404 );
+				return get_404_template();
 			}
 
 			// Make sure we don't have a 404 status if the poll exists
@@ -264,36 +298,121 @@ class Decision_Polls_Custom_Endpoints {
 				status_header( 200 );
 				$wp_query->is_404 = false;
 			}
-
-			// Render header.
-			get_header();
-
-			echo '<div class="decision-polls-page-container">';
-			echo '<h1 class="entry-title">' . esc_html( $poll['title'] ) . '</h1>';
+			
+			// Create a dummy post to prevent errors in WordPress core functions.
+			$dummy_post_id = -$poll_id; // Use a negative ID to ensure it doesn't conflict with any real post.
+			$dummy_post = self::create_dummy_post(
+				$dummy_post_id, 
+				$poll['title'],
+				isset($poll['description']) ? $poll['description'] : '',
+				'page'
+			);
+			
+			// Set the global post object and setup post data.
+			$post = $dummy_post;
+			$wp_query->post = $dummy_post;
+			$wp_query->posts = array( $dummy_post );
+			$wp_query->queried_object = $dummy_post;
+			$wp_query->queried_object_id = $dummy_post_id;
+			$wp_query->found_posts = 1;
+			$wp_query->post_count = 1;
+			
+			// Setup post data.
+			setup_postdata( $dummy_post );
 
 			// Check if we need to show results.
 			$show_results = null !== $wp_query->get( 'decision_polls_show_results' ) &&
 				$wp_query->get( 'decision_polls_show_results' );
-
-			// Display the poll shortcode with the appropriate poll ID and results parameter if needed.
-			$shortcode = '[decision_poll id="' . esc_attr( $poll_id ) . '"';
-			if ( $show_results ) {
-				$shortcode .= ' show_results="1"';
-			}
-			$shortcode .= ']';
 			
-			echo do_shortcode( $shortcode );
-
-			echo '</div>';
-
-			// Render footer.
-			get_footer();
-
-			// Return a blank template to prevent further output.
-			return DECISION_POLLS_PLUGIN_DIR . 'templates/blank-template.php';
+			// Override template include filter with lower priority.
+			add_filter( 'template_include', function( $orig_template ) use ( $poll_id, $poll, $show_results ) {
+				remove_all_filters( 'the_content' );
+				add_filter( 'the_content', function( $content ) use ( $poll_id, $poll, $show_results ) {
+					// Build the shortcode.
+					$shortcode = '[decision_poll id="' . esc_attr( $poll_id ) . '"';
+					if ( $show_results ) {
+						$shortcode .= ' show_results="1"';
+					}
+					$shortcode .= ']';
+					
+					// Our custom content.
+					return '<div class="decision-polls-page-container">' .
+						'<h1 class="entry-title">' . esc_html( $poll['title'] ) . '</h1>' .
+						do_shortcode( $shortcode ) .
+						'</div>';
+				});
+				
+				// Try to use the page template from the theme.
+				$possible_templates = array(
+					'page.php',
+					'single.php',
+					'index.php'
+				);
+				
+				foreach ( $possible_templates as $possible_template ) {
+					$path = get_template_directory() . '/' . $possible_template;
+					if ( file_exists( $path ) ) {
+						return $path;
+					}
+				}
+				
+				// Fallback to the original template.
+				return $orig_template;
+			}, 99999 );
+			
+			return $template;
 		}
 
 		return $template;
+	}
+	
+	/**
+	 * Create a dummy post object for use with custom endpoints.
+	 *
+	 * @param int    $id          The post ID to use.
+	 * @param string $title       The post title.
+	 * @param string $content     The post content.
+	 * @param string $post_type   The post type.
+	 * @return object The dummy post object.
+	 */
+	private static function create_dummy_post( $id, $title, $content = '', $post_type = 'page' ) {
+		// Create a stdClass object to mimic a WP_Post object.
+		$post = new \stdClass();
+		
+		// Set up the minimum required fields.
+		$post->ID = $id;
+		$post->post_author = 1;
+		$post->post_date = current_time( 'mysql' );
+		$post->post_date_gmt = current_time( 'mysql', 1 );
+		$post->post_title = $title;
+		$post->post_content = $content;
+		$post->post_status = 'publish';
+		$post->comment_status = 'closed';
+		$post->ping_status = 'closed';
+		$post->post_name = sanitize_title( $title );
+		$post->post_type = $post_type;
+		$post->filter = 'raw';
+		$post->post_parent = 0;
+		$post->comment_count = 0;
+		$post->guid = home_url( '/' . $post->post_name );
+		$post->post_mime_type = '';
+		$post->ancestors = array();
+		
+		// Add other fields that might be needed.
+		$post->post_excerpt = '';
+		$post->post_modified = $post->post_date;
+		$post->post_modified_gmt = $post->post_date_gmt;
+		$post->post_password = '';
+		$post->post_content_filtered = '';
+		$post->menu_order = 0;
+		$post->page_template = 'default';
+		
+		// Convert to a proper WP_Post object if the class exists.
+		if ( class_exists( 'WP_Post' ) ) {
+			$post = new \WP_Post( $post );
+		}
+		
+		return $post;
 	}
 
 	/**
