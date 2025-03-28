@@ -346,6 +346,11 @@ function submitVote(data, $form) {
 	 * Initialize poll creator form.
 	 */
 	function initPollCreator() {
+		// Make sure we only initialize once to prevent duplicate event bindings
+		if ($('.decision-poll-creator').data('initialized')) {
+			return;
+		}
+		
 		var $creator = $('.decision-poll-creator');
 		var $form = $creator.find('.decision-poll-creator-form');
 		var $optionsContainer = $creator.find('.decision-poll-creator-options');
@@ -353,6 +358,9 @@ function submitVote(data, $form) {
 		var $typeSelect = $creator.find('select[name="poll_type"]');
 		var $multipleOptions = $creator.find('.decision-poll-multiple-options');
 		var $message = $creator.find('.decision-poll-message');
+		
+		// Mark as initialized to prevent duplicate initialization
+		$creator.data('initialized', true);
 		
 		// Initially hide or show multiple choice options based on selected type.
 		toggleMultipleOptions();
@@ -448,18 +456,16 @@ function submitVote(data, $form) {
 				},
 				success: function(response) {
 					if (response.success) {
-						// Show success message.
+						// Show brief success message
 						$message.html('<p class="success">' + decisionPollsL10n.pollCreated + '</p>').fadeIn();
 						
-						// Clear form.
-						$form[0].reset();
-						$optionsContainer.find('.decision-poll-creator-option').not(':first').remove();
-						
-						// Show link to view poll.
+						// Get the URL for the new poll
 						var pollUrl = decisionPollsL10n.pollLink.replace('POLL_ID', response.data.poll.id);
 						
-						$message.append('<p><a href="' + pollUrl + '" class="button">' + 
-							decisionPollsL10n.viewPoll + '</a></p>');
+						// Automatically redirect to the new poll after a short delay
+						setTimeout(function() {
+							window.location.href = pollUrl;
+						}, 1000);
 					} else {
 						$message.html('<p class="error">' + decisionPollsL10n.pollCreateError + 
 							(response.data && response.data.message ? ': ' + response.data.message : '') + 

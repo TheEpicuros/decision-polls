@@ -15,15 +15,15 @@ if ( ! isset( $polls_data ) || empty( $polls_data ) ) {
 	return;
 }
 
-$polls = isset( $polls_data['polls'] ) ? $polls_data['polls'] : array();
-$total_polls = isset( $polls_data['total'] ) ? absint( $polls_data['total'] ) : 0;
+$polls        = isset( $polls_data['polls'] ) ? $polls_data['polls'] : array();
+$total_polls  = isset( $polls_data['total'] ) ? absint( $polls_data['total'] ) : 0;
 $current_page = isset( $polls_data['page'] ) ? absint( $polls_data['page'] ) : 1;
-$per_page = isset( $polls_data['per_page'] ) ? absint( $polls_data['per_page'] ) : 10;
-$total_pages = ceil( $total_polls / $per_page );
+$per_page     = isset( $polls_data['per_page'] ) ? absint( $polls_data['per_page'] ) : 10;
+$total_pages  = ceil( $total_polls / $per_page );
 
 // Get current URL for pagination links.
 $current_url = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
-$base_url = remove_query_arg( 'poll_page', $current_url );
+$base_url    = remove_query_arg( 'poll_page', $current_url );
 ?>
 
 <div class="decision-polls-list-container">
@@ -31,12 +31,12 @@ $base_url = remove_query_arg( 'poll_page', $current_url );
 		<div class="decision-polls-list">
 			<?php foreach ( $polls as $poll ) : ?>
 				<?php
-				$poll_id = isset( $poll['id'] ) ? absint( $poll['id'] ) : 0;
-				$poll_title = isset( $poll['title'] ) ? esc_html( $poll['title'] ) : '';
+				$poll_id          = isset( $poll['id'] ) ? absint( $poll['id'] ) : 0;
+				$poll_title       = isset( $poll['title'] ) ? esc_html( $poll['title'] ) : '';
 				$poll_description = isset( $poll['description'] ) ? esc_html( $poll['description'] ) : '';
-				$poll_type = isset( $poll['type'] ) ? esc_html( $poll['type'] ) : 'standard';
-				$created_at = isset( $poll['created_at'] ) ? $poll['created_at'] : '';
-				$total_votes = isset( $poll['total_votes'] ) ? absint( $poll['total_votes'] ) : 0;
+				$poll_type        = isset( $poll['type'] ) ? esc_html( $poll['type'] ) : 'standard';
+				$created_at       = isset( $poll['created_at'] ) ? $poll['created_at'] : '';
+				$total_votes      = isset( $poll['total_votes'] ) ? absint( $poll['total_votes'] ) : 0;
 
 				// Format poll type for display.
 				$poll_type_display = '';
@@ -80,23 +80,23 @@ $base_url = remove_query_arg( 'poll_page', $current_url );
 					// Load the vote model only if we need to get results
 					if ( ! isset( $poll['results'] ) || empty( $poll['results'] ) ) :
 						$vote_model = new Decision_Polls_Vote();
-						$results = $vote_model->get_results( $poll_id );
+						$results    = $vote_model->get_results( $poll_id );
 					else :
 						$results = $poll['results'];
 					endif;
-					
+
 					// If we have results, show them
 					if ( isset( $results['results'] ) && ! empty( $results['results'] ) ) :
 						// Get total votes from results which is more accurate
 						$total_votes = isset( $results['total_votes'] ) ? absint( $results['total_votes'] ) : 0;
-					?>
+						?>
 						<div class="decision-polls-preview-results">
 							<?php foreach ( array_slice( $results['results'], 0, 3 ) as $result ) : ?>
 								<?php
-								$answer_text = isset( $result['text'] ) ? esc_html( $result['text'] ) : '';
-								$percentage = isset( $result['percentage'] ) ? floatval( $result['percentage'] ) : 0;
+								$answer_text          = isset( $result['text'] ) ? esc_html( $result['text'] ) : '';
+								$percentage           = isset( $result['percentage'] ) ? floatval( $result['percentage'] ) : 0;
 								$formatted_percentage = number_format( $percentage, 1 );
-								
+
 								// For ranked polls, add rank indicators
 								$rank_label = '';
 								if ( 'ranked' === $poll_type ) {
@@ -126,11 +126,7 @@ $base_url = remove_query_arg( 'poll_page', $current_url );
 								</div>
 							<?php endforeach; ?>
 							
-							<?php if ( count( $results['results'] ) > 3 ) : ?>
-								<div class="decision-polls-more-results">
-									<a href="<?php echo esc_url( $poll_url ); ?>"><?php esc_html_e( 'View all results', 'decision-polls' ); ?></a>
-								</div>
-							<?php endif; ?>
+							<!-- Removed "View all results" link as the title link is sufficient -->
 						</div>
 					<?php endif; ?>
 					
@@ -170,7 +166,7 @@ $base_url = remove_query_arg( 'poll_page', $current_url );
 
 				// Page numbers.
 				$start_page = max( 1, $current_page - 2 );
-				$end_page = min( $total_pages, $current_page + 2 );
+				$end_page   = min( $total_pages, $current_page + 2 );
 
 				if ( $start_page > 1 ) {
 					$first_url = add_query_arg( 'poll_page', 1, $base_url );

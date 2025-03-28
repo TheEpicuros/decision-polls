@@ -16,11 +16,11 @@ if ( ! isset( $poll ) || empty( $poll ) || ! isset( $results ) || empty( $result
 }
 
 // Set unique ID for this poll instance.
-$poll_id = absint( $poll['id'] );
+$poll_id           = absint( $poll['id'] );
 $poll_container_id = 'decision-poll-results-' . $poll_id;
 
 // Sanitize and prepare results data.
-$total_votes = isset( $results['total_votes'] ) ? absint( $results['total_votes'] ) : 0;
+$total_votes  = isset( $results['total_votes'] ) ? absint( $results['total_votes'] ) : 0;
 $results_data = isset( $results['results'] ) ? $results['results'] : array();
 $last_updated = isset( $results['last_updated'] ) ? $results['last_updated'] : '';
 ?>
@@ -46,48 +46,48 @@ $last_updated = isset( $results['last_updated'] ) ? $results['last_updated'] : '
 		<?php if ( ! empty( $results_data ) && is_array( $results_data ) ) : ?>
 			<?php foreach ( $results_data as $result ) : ?>
 				<?php
-				$answer_id = isset( $result['id'] ) ? absint( $result['id'] ) : 0;
+				$answer_id   = isset( $result['id'] ) ? absint( $result['id'] ) : 0;
 				$answer_text = isset( $result['text'] ) ? esc_html( $result['text'] ) : '';
-				$votes = isset( $result['votes'] ) ? absint( $result['votes'] ) : 0;
-				$percentage = isset( $result['percentage'] ) ? floatval( $result['percentage'] ) : 0;
-				
+				$votes       = isset( $result['votes'] ) ? absint( $result['votes'] ) : 0;
+				$percentage  = isset( $result['percentage'] ) ? floatval( $result['percentage'] ) : 0;
+
 				// Format percentage with 1 decimal place.
 				$formatted_percentage = number_format( $percentage, 1 );
-				
+
 				// Determine the bar color based on rank.
-				$poll_type = isset( $poll['type'] ) ? $poll['type'] : 'standard';
-				$bar_class = 'decision-poll-result-bar';
+				$poll_type    = isset( $poll['type'] ) ? $poll['type'] : 'standard';
+				$bar_class    = 'decision-poll-result-bar';
 				$rank_display = '';
-				
+
 				// Special handling for ranked choice polls.
 				if ( 'ranked' === $poll_type ) {
 					$bar_class .= ' decision-poll-ranked-bar';
-					
+
 					// Calculate the rank index (assuming results are already sorted by rank).
 					$rank_index = array_search( $result, $results_data, true );
-					$rank_text = '';
-					
+					$rank_text  = '';
+
 					// Create rank label (1st, 2nd, 3rd, etc.).
 					switch ( $rank_index + 1 ) {
 						case 1:
-							$rank_text = esc_html__( '1st choice', 'decision-polls' );
+							$rank_text  = esc_html__( '1st choice', 'decision-polls' );
 							$bar_class .= ' rank-first';
 							break;
 						case 2:
-							$rank_text = esc_html__( '2nd choice', 'decision-polls' );
+							$rank_text  = esc_html__( '2nd choice', 'decision-polls' );
 							$bar_class .= ' rank-second';
 							break;
 						case 3:
-							$rank_text = esc_html__( '3rd choice', 'decision-polls' );
+							$rank_text  = esc_html__( '3rd choice', 'decision-polls' );
 							$bar_class .= ' rank-third';
 							break;
 						default:
 							/* translators: %d: the rank number (4, 5, etc.) */
-							$rank_text = sprintf( esc_html__( '%dth choice', 'decision-polls' ), $rank_index + 1 );
+							$rank_text  = sprintf( esc_html__( '%dth choice', 'decision-polls' ), $rank_index + 1 );
 							$bar_class .= ' rank-other';
 							break;
 					}
-					
+
 					$rank_display = '<span class="decision-poll-rank-indicator">' . $rank_text . '</span>';
 				}
 				?>
@@ -101,15 +101,17 @@ $last_updated = isset( $results['last_updated'] ) ? $results['last_updated'] : '
 							<span class="decision-poll-result-percentage"><?php echo esc_html( $formatted_percentage . '%' ); ?></span>
 						</div>
 					</div>
-					<div class="decision-poll-result-votes">
-						<?php
-						printf(
-							/* translators: %d: number of votes for this option */
-							esc_html( _n( '%d vote', '%d votes', $votes, 'decision-polls' ) ),
-							esc_html( $votes )
-						);
-						?>
-					</div>
+					<?php if ( 'ranked' !== $poll_type ) : ?>
+						<div class="decision-poll-result-votes">
+							<?php
+							printf(
+								/* translators: %d: number of votes for this option */
+								esc_html( _n( '%d vote', '%d votes', $votes, 'decision-polls' ) ),
+								esc_html( $votes )
+							);
+							?>
+						</div>
+					<?php endif; ?>
 				</div>
 			<?php endforeach; ?>
 		<?php else : ?>
