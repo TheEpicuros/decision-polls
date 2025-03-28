@@ -16,26 +16,82 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Decision_Polls_Custom_Endpoints {
 
 	/**
+	 * Static property to store current poll ID for permalink functions.
+	 *
+	 * @var int
+	 */
+	private static $current_poll_id = 0;
+
+	/**
 	 * Initialize the class.
 	 */
 	public static function init() {
 		// Register the endpoint.
-		add_action( 'init', array( __CLASS__, 'add_endpoints' ) );
+		add_action( 'init', array( __CLASS__, 'add_endpoints' ), 10 );
 
 		// Add query vars.
 		add_filter( 'query_vars', array( __CLASS__, 'add_query_vars' ) );
+
+		// Pre-handle query before template_redirect for earlier setup
+		add_action( 'parse_request', array( __CLASS__, 'pre_handle_request' ), 1 );
 
 		// Handle template redirect.
 		add_action( 'template_redirect', array( __CLASS__, 'handle_template_redirect' ) );
 
 		// Filter permalinks for polls.
 		add_filter( 'page_link', array( __CLASS__, 'filter_poll_permalink' ), 10, 2 );
+		add_filter( 'post_type_link', array( __CLASS__, 'filter_poll_permalink' ), 10, 2 );
+
+		// Filter for permalinks with no post object
+		add_filter( 'post_type_archive_link', array( __CLASS__, 'filter_post_type_archive' ), 10, 2 );
+		add_filter( 'permalink_manager_detect_post_id', array( __CLASS__, 'provide_poll_id_for_permalink' ), 10, 2 );
+		add_filter( 'get_post_metadata', array( __CLASS__, 'filter_post_metadata' ), 10, 4 );
 	}
 
 	/**
 	 * Add our custom endpoints.
 	 */
 	public static function add_endpoints() {
+		// Simulate a post type for better integration - don't actually register it
+		global $wp_post_types;
+		if ( ! isset( $wp_post_types['poll'] ) ) {
+			$args = array(
+				'label'               => __( 'Polls', 'decision-polls' ),
+				'description'         => __( 'Decision Polls', 'decision-polls' ),
+				'public'              => true,
+				'publicly_queryable'  => true,
+				'show_ui'             => false,
+				'show_in_menu'        => false,
+				'rewrite'             => false,
+				'capability_type'     => 'post',
+				'has_archive'         => false,
+				'hierarchical'        => false,
+				'supports'            => array( 'title', 'editor' ),
+				'_builtin'            => false,
+			);
+			
+			// Create a stdClass to mimic a post type object without registering it
+			$poll_type = (object) $args;
+			$poll_type->name = 'poll';
+			$poll_type->labels = (object) array(
+				'name'               => __( 'Polls', 'decision-polls' ),
+				'singular_name'      => __( 'Poll', 'decision-polls' ),
+				'menu_name'          => __( 'Polls', 'decision-polls' ),
+				'all_items'          => __( 'All Polls', 'decision-polls' ),
+				'view_item'          => __( 'View Poll', 'decision-polls' ),
+				'add_new_item'       => __( 'Add New Poll', 'decision-polls' ),
+				'add_new'            => __( 'Add New', 'decision-polls' ),
+				'edit_item'          => __( 'Edit Poll', 'decision-polls' ),
+				'update_item'        => __( 'Update Poll', 'decision-polls' ),
+				'search_items'       => __( 'Search Polls', 'decision-polls' ),
+				'not_found'          => __( 'Not found', 'decision-polls' ),
+				'not_found_in_trash' => __( 'Not found in Trash', 'decision-polls' ),
+			);
+			
+			// Add to global post types
+			$wp_post_types['poll'] = $poll_type;
+		}
+		
 		// Add endpoint for poll create.
 		add_rewrite_rule(
 			'^poll/create/?$',
@@ -71,10 +127,99 @@ class Decision_Polls_Custom_Endpoints {
 	}
 
 	/**
+	 * Pre-handle request to set up post data early
+	 * 
+	 * @param WP $wp Current WordPress environment instance
+	 */
+	public static function pre_handle_request( $wp ) {
+		// Check for poll_id in query vars
+		if ( isset( $wp->query_vars['poll_id'] ) ) {
+			$poll_id = absint( $wp->query_vars['poll_id'] );
+			self::$current_poll_id = $poll_id;
+			
+			// Set up early post data
+			self::setup_early_poll_data( $poll_id );
+		}
+		
+		// Check for poll_action query var
+		if ( isset( $wp->query_vars['poll_action'] ) && 'create' === $wp->query_vars['poll_action'] ) {
+			// Set up early post data for create page
+			self::setup_early_create_page_data();
+		}
+		
+		// Handle GET parameters for backward compatibility
+		if ( isset( $_GET['poll_id'] ) && ! isset( $wp->query_vars['poll_id'] ) ) {
+			$poll_id = absint( $_GET['poll_id'] );
+			self::$current_poll_id = $poll_id;
+			
+			// Set up early post data
+			self::setup_early_poll_data( $poll_id );
+		}
+		
+		// Handle direct 'create_poll' parameter
+		if ( isset( $_GET['create_poll'] ) && ! isset( $wp->query_vars['poll_action'] ) ) {
+			// Set up early post data for create page
+			self::setup_early_create_page_data();
+		}
+	}
+	
+	/**
+	 * Set up early post data for poll page
+	 * 
+	 * @param int $poll_id The poll ID
+	 */
+	private static function setup_early_poll_data( $poll_id ) {
+		global $wp_query, $post;
+		
+		if ( $poll_id <= 0 ) {
+			return;
+		}
+		
+		// Get poll from database
+		$poll_model = new Decision_Polls_Poll();
+		$poll = $poll_model->get( $poll_id );
+		
+		if ( ! $poll ) {
+			return;
+		}
+		
+		// Create a dummy post object
+		$dummy_post_id = -$poll_id;
+		$dummy_post = self::create_dummy_post(
+			$dummy_post_id,
+			$poll['title'],
+			isset( $poll['description'] ) ? $poll['description'] : '',
+			'poll'  // Use our virtual post type
+		);
+		
+		// Set up globals early
+		$post = $dummy_post;
+	}
+	
+	/**
+	 * Set up early post data for create page
+	 */
+	private static function setup_early_create_page_data() {
+		global $wp_query, $post;
+		
+		// Create a dummy post
+		$dummy_post_id = -999;
+		$dummy_post = self::create_dummy_post(
+			$dummy_post_id,
+			__( 'Create a New Poll', 'decision-polls' ),
+			'',
+			'poll'  // Use our virtual post type
+		);
+		
+		// Set up globals early
+		$post = $dummy_post;
+	}
+	
+	/**
 	 * Handle template redirection based on our custom endpoints.
 	 */
 	public static function handle_template_redirect() {
-		global $wp_query;
+		global $wp_query, $wp;
 
 		// First, handle GET parameters for backward compatibility and direct access.
 		if ( isset( $_GET['poll_id'] ) && ! isset( $wp_query->query_vars['poll_id'] ) ) {
@@ -379,6 +524,9 @@ class Decision_Polls_Custom_Endpoints {
 		// Create a stdClass object to mimic a WP_Post object.
 		$post = new \stdClass();
 		
+		// Generate slug from title
+		$slug = sanitize_title( $title );
+		
 		// Set up the minimum required fields.
 		$post->ID = $id;
 		$post->post_author = 1;
@@ -389,12 +537,28 @@ class Decision_Polls_Custom_Endpoints {
 		$post->post_status = 'publish';
 		$post->comment_status = 'closed';
 		$post->ping_status = 'closed';
-		$post->post_name = sanitize_title( $title );
+		$post->post_name = $slug;
 		$post->post_type = $post_type;
 		$post->filter = 'raw';
 		$post->post_parent = 0;
 		$post->comment_count = 0;
-		$post->guid = home_url( '/' . $post->post_name );
+		
+		// Create proper guid based on post type
+		if ( $post_type === 'poll' && $id < 0 ) {
+			// For polls, use our custom permalink structure
+			$poll_id = absint( $id * -1 ); // Convert negative ID to positive
+			if ( $poll_id === 999 ) {
+				// Create poll URL
+				$post->guid = home_url( '/poll/create/' );
+			} else {
+				// Single poll URL
+				$post->guid = home_url( '/poll/' . $poll_id . '/' );
+			}
+		} else {
+			// Default guid
+			$post->guid = home_url( '/' . $slug . '/' );
+		}
+		
 		$post->post_mime_type = '';
 		$post->ancestors = array();
 		
@@ -406,6 +570,8 @@ class Decision_Polls_Custom_Endpoints {
 		$post->post_content_filtered = '';
 		$post->menu_order = 0;
 		$post->page_template = 'default';
+		$post->post_category = array(); // Required by some link functions
+		$post->tags_input = array();    // Required by some link functions
 		
 		// Convert to a proper WP_Post object if the class exists.
 		if ( class_exists( 'WP_Post' ) ) {
@@ -416,10 +582,76 @@ class Decision_Polls_Custom_Endpoints {
 	}
 
 	/**
+	 * Provide poll ID for permalink generation.
+	 * 
+	 * @param int|null $post_id The post ID, or null if not found.
+	 * @param string   $url     The current URL.
+	 * @return int|null The poll ID if available, or the original post ID.
+	 */
+	public static function provide_poll_id_for_permalink( $post_id, $url ) {
+		// Check if this is a poll URL
+		if ( strpos( $url, '/poll/' ) !== false ) {
+			if ( strpos( $url, '/poll/create/' ) !== false ) {
+				return -999; // Special ID for create page
+			}
+			
+			// Extract poll ID from URL
+			if ( preg_match( '/\/poll\/(\d+)\//', $url, $matches ) ) {
+				$poll_id = absint( $matches[1] );
+				return -$poll_id; // Return negative ID to match our dummy posts
+			}
+		}
+		
+		// Check if we have a current poll ID
+		if ( self::$current_poll_id > 0 ) {
+			return -self::$current_poll_id; // Return negative ID to match our dummy posts
+		}
+		
+		return $post_id;
+	}
+	
+	/**
+	 * Filter post metadata for our dummy posts.
+	 * 
+	 * @param mixed  $value     The value to return.
+	 * @param int    $object_id The object ID.
+	 * @param string $meta_key  The meta key.
+	 * @param bool   $single    Whether to return a single value.
+	 * @return mixed The filtered value.
+	 */
+	public static function filter_post_metadata( $value, $object_id, $meta_key, $single ) {
+		// Check if this is one of our dummy posts (negative ID)
+		if ( $object_id < 0 ) {
+			// Special case for post_type which is often used in template functions
+			if ( '_wp_page_template' === $meta_key ) {
+				return $single ? 'default' : array( 'default' );
+			}
+		}
+		
+		return $value;
+	}
+	
+	/**
+	 * Filter post type archive link.
+	 * 
+	 * @param string $link      The archive link.
+	 * @param string $post_type The post type.
+	 * @return string The filtered link.
+	 */
+	public static function filter_post_type_archive( $link, $post_type ) {
+		// Check if this is our poll post type
+		if ( 'poll' === $post_type ) {
+			return home_url( '/polls/' );
+		}
+		
+		return $link;
+	}
+	
+	/**
 	 * Filter the poll permalink to use our clean URL structure.
 	 *
-	 * @param string $permalink The current permalink.
-	 * @param int    $post_id The post ID.
+	 * @param string      $permalink The current permalink.
+	 * @param int|WP_Post $post_id   The post ID or object.
 	 * @return string The modified permalink.
 	 */
 	public static function filter_poll_permalink( $permalink, $post_id ) {
@@ -427,7 +659,28 @@ class Decision_Polls_Custom_Endpoints {
 		if ( is_admin() ) {
 			return $permalink;
 		}
+		
+		// Handle post object
+		if ( is_object( $post_id ) ) {
+			$post = $post_id;
+			$post_id = $post->ID;
+			
+			// If this is our dummy poll post type
+			if ( isset( $post->post_type ) && 'poll' === $post->post_type ) {
+				// For create page
+				if ( $post_id === -999 ) {
+					return home_url( 'poll/create/' );
+				}
+				
+				// For single poll view, convert negative ID to positive
+				if ( $post_id < 0 ) {
+					$poll_id = absint( $post_id * -1 );
+					return home_url( "poll/{$poll_id}/" );
+				}
+			}
+		}
 
+		// Handle string permalinks with query parameters
 		// Replace poll creation links.
 		if ( strpos( $permalink, 'create_poll=1' ) !== false ) {
 			return home_url( 'poll/create/' );
@@ -437,6 +690,23 @@ class Decision_Polls_Custom_Endpoints {
 		if ( preg_match( '/poll_id=(\d+)/', $permalink, $matches ) ) {
 			$poll_id = $matches[1];
 			return home_url( "poll/{$poll_id}/" );
+		}
+		
+		// Check if this is one of our dummy posts
+		if ( $post_id < 0 ) {
+			// Special case for create page
+			if ( $post_id === -999 ) {
+				return home_url( 'poll/create/' );
+			}
+			
+			// For regular polls, convert negative ID to positive
+			$poll_id = absint( $post_id * -1 );
+			return home_url( "poll/{$poll_id}/" );
+		}
+		
+		// If we have a current poll context and no post ID
+		if ( self::$current_poll_id > 0 && empty( $post_id ) ) {
+			return home_url( "poll/" . self::$current_poll_id . "/" );
 		}
 
 		return $permalink;
