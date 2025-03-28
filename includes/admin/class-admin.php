@@ -297,7 +297,7 @@ class Decision_Polls_Admin {
 			</table>
 				<?php
 
-				// Pagination
+				// Pagination.
 				$total_pages = ceil( $total_polls / $args['per_page'] );
 				if ( $total_pages > 1 ) {
 					echo '<div class="tablenav-pages">';
