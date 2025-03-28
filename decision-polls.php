@@ -40,14 +40,14 @@ final class Decision_Polls {
 	 * @var Decision_Polls
 	 */
 	private static $instance = null;
-	
+
 	/**
 	 * API instance
 	 *
 	 * @var Decision_Polls_API
 	 */
 	public $api;
-	
+
 	/**
 	 * Get singleton instance
 	 *
@@ -59,14 +59,14 @@ final class Decision_Polls {
 		}
 		return self::$instance;
 	}
-	
+
 	/**
 	 * Constructor
 	 */
 	private function __construct() {
 		$this->init_hooks();
 	}
-	
+
 	/**
 	 * Initialize hooks
 	 */
@@ -74,106 +74,106 @@ final class Decision_Polls {
 		// Activation/deactivation hooks.
 		register_activation_hook( __FILE__, array( $this, 'activate' ) );
 		register_deactivation_hook( __FILE__, array( $this, 'deactivate' ) );
-		
+
 		// Initialize the plugin if WordPress is fully loaded.
 		add_action( 'plugins_loaded', array( $this, 'init' ), 0 );
 	}
-	
+
 	/**
 	 * Plugin activation
 	 */
 	public function activate() {
 		require_once DECISION_POLLS_PLUGIN_DIR . 'includes/core/class-install.php';
 		Decision_Polls_Install::activate();
-		
+
 		// Register API capabilities.
 		require_once DECISION_POLLS_PLUGIN_DIR . 'includes/core/class-api.php';
 		Decision_Polls_API::register_capabilities();
 	}
-	
+
 	/**
 	 * Plugin deactivation
 	 */
 	public function deactivate() {
 		// Remove API capabilities (optional).
 		// Decision_Polls_API::remove_capabilities();
-		
+
 		// Flush rewrite rules.
 		flush_rewrite_rules();
 	}
-	
+
 	/**
 	 * Initialize plugin
 	 */
 	public function init() {
 		// Load text domain.
 		load_plugin_textdomain( 'decision-polls', false, dirname( DECISION_POLLS_PLUGIN_BASENAME ) . '/languages' );
-		
+
 		// Initialize components.
 		$this->init_components();
 	}
-	
+
 	/**
 	 * Initialize plugin components
 	 */
 	private function init_components() {
 		// Initialize API.
 		$this->init_api();
-		
+
 		// Admin.
 		if ( is_admin() ) {
 			$this->init_admin();
 		}
-		
+
 		// Frontend.
 		$this->init_frontend();
-		
+
 		// Shortcodes.
 		$this->init_shortcodes();
-		
+
 		// AJAX handlers.
 		$this->init_ajax();
-		
+
 		// Assets.
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'register_admin_assets' ) );
 	}
-	
+
 	/**
 	 * Initialize API.
 	 */
 	private function init_api() {
 		$this->api = new Decision_Polls_API();
 	}
-	
+
 	/**
 	 * Initialize admin.
 	 */
 	private function init_admin() {
 		$this->load_class( 'admin/class-admin' );
 	}
-	
+
 	/**
 	 * Initialize frontend.
 	 */
 	private function init_frontend() {
 		$this->load_class( 'frontend/class-frontend' );
 	}
-	
+
 	/**
 	 * Initialize shortcodes.
 	 */
 	private function init_shortcodes() {
 		require_once DECISION_POLLS_PLUGIN_DIR . 'includes/class-shortcodes.php';
 	}
-	
+
 	/**
 	 * Initialize AJAX handlers.
 	 */
 	private function init_ajax() {
 		require_once DECISION_POLLS_PLUGIN_DIR . 'includes/ajax.php';
 	}
-	
+
 	/**
 	 * Load a class file.
 	 *
@@ -191,7 +191,7 @@ final class Decision_Polls {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Convert file path to class name.
 	 *
@@ -199,77 +199,77 @@ final class Decision_Polls {
 	 * @return string Class name.
 	 */
 	private function get_class_name_from_path( $path ) {
-		$parts = explode( '/', $path );
+		$parts      = explode( '/', $path );
 		$class_file = end( $parts );
 		$class_name = str_replace( array( 'class-', '.php' ), '', $class_file );
 		$class_name = 'Decision_Polls_' . implode( '_', array_map( 'ucfirst', explode( '-', $class_name ) ) );
 		return $class_name;
 	}
-	
+
 	/**
 	 * Register frontend assets.
 	 */
 	public function register_assets() {
 		// CSS.
 		wp_register_style( 'decision-polls', DECISION_POLLS_PLUGIN_URL . 'assets/css/frontend.css', array(), DECISION_POLLS_VERSION );
-		
+
 		// JavaScript (traditional).
 		wp_register_script( 'decision-polls', DECISION_POLLS_PLUGIN_URL . 'assets/js/frontend.js', array( 'jquery', 'jquery-ui-sortable' ), DECISION_POLLS_VERSION, true );
-		
+
 		// React components.
 		wp_register_script( 'decision-polls-ranked', DECISION_POLLS_PLUGIN_URL . 'assets/dist/ranked-poll.js', array( 'wp-element' ), DECISION_POLLS_VERSION, true );
 		wp_register_script( 'decision-polls-creator', DECISION_POLLS_PLUGIN_URL . 'assets/dist/poll-creator.js', array( 'wp-element' ), DECISION_POLLS_VERSION, true );
 		wp_register_script( 'decision-polls-results', DECISION_POLLS_PLUGIN_URL . 'assets/dist/results.js', array( 'wp-element' ), DECISION_POLLS_VERSION, true );
-		
+
 		// Localize script with API data.
 		wp_localize_script(
 			'decision-polls',
 			'decisionPollsAPI',
 			array(
-				'url' => esc_url_raw( rest_url( $this->api->get_endpoint( 'polls' )->get_namespace() ) ),
-				'nonce' => wp_create_nonce( 'wp_rest' ),
+				'url'      => esc_url_raw( rest_url( $this->api->get_endpoint( 'polls' )->get_namespace() ) ),
+				'nonce'    => wp_create_nonce( 'wp_rest' ),
 				'adminUrl' => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
 			)
 		);
-		
+
 		// Localize script with translations.
 		wp_localize_script(
 			'decision-polls',
 			'decisionPollsL10n',
 			array(
-				'maxChoicesError' => esc_html__( 'You can select a maximum of {max} options.', 'decision-polls' ),
+				'maxChoicesError'   => esc_html__( 'You can select a maximum of {max} options.', 'decision-polls' ),
 				'selectOptionError' => esc_html__( 'Please select at least one option.', 'decision-polls' ),
-				'voteSuccess' => esc_html__( 'Your vote has been recorded. Thank you!', 'decision-polls' ),
-				'voteError' => esc_html__( 'There was an error submitting your vote. Please try again.', 'decision-polls' ),
-				'totalVotes' => esc_html__( 'Total votes: {total}', 'decision-polls' ),
-				'votes' => esc_html__( '{votes} votes', 'decision-polls' ),
-				'lastUpdated' => esc_html__( 'Last updated: {time}', 'decision-polls' ),
-				'pollCreated' => esc_html__( 'Poll created successfully!', 'decision-polls' ),
-				'pollCreateError' => esc_html__( 'An error occurred while creating the poll. Please try again.', 'decision-polls' ),
-				'option' => esc_html__( 'Option', 'decision-polls' ),
-				'remove' => esc_html__( 'Remove', 'decision-polls' ),
-				'pollLink' => esc_url( add_query_arg( 'poll_id', 'POLL_ID', get_permalink() ) ),
-				'viewPoll' => esc_html__( 'View your poll', 'decision-polls' ),
+				'voteSuccess'       => esc_html__( 'Your vote has been recorded. Thank you!', 'decision-polls' ),
+				'voteError'         => esc_html__( 'There was an error submitting your vote. Please try again.', 'decision-polls' ),
+				'totalVotes'        => esc_html__( 'Total votes: {total}', 'decision-polls' ),
+				'votes'             => esc_html__( '{votes} votes', 'decision-polls' ),
+				'lastUpdated'       => esc_html__( 'Last updated: {time}', 'decision-polls' ),
+				'pollCreated'       => esc_html__( 'Poll created successfully!', 'decision-polls' ),
+				'pollCreateError'   => esc_html__( 'An error occurred while creating the poll. Please try again.', 'decision-polls' ),
+				'option'            => esc_html__( 'Option', 'decision-polls' ),
+				'remove'            => esc_html__( 'Remove', 'decision-polls' ),
+				'pollLink'          => esc_url( add_query_arg( 'poll_id', 'POLL_ID', get_permalink() ) ),
+				'viewPoll'          => esc_html__( 'View your poll', 'decision-polls' ),
 			)
 		);
 	}
-	
+
 	/**
 	 * Register admin assets
 	 */
 	public function register_admin_assets() {
 		// Admin CSS.
 		wp_register_style( 'decision-polls-admin', DECISION_POLLS_PLUGIN_URL . 'assets/css/admin.css', array(), DECISION_POLLS_VERSION );
-		
+
 		// Admin JS.
 		wp_register_script( 'decision-polls-admin', DECISION_POLLS_PLUGIN_URL . 'assets/js/admin.js', array( 'jquery' ), DECISION_POLLS_VERSION, true );
-		
+
 		// Localize script with API data.
 		wp_localize_script(
 			'decision-polls-admin',
 			'decisionPollsAPI',
 			array(
-				'url' => esc_url_raw( rest_url( $this->api->get_endpoint( 'polls' )->get_namespace() ) ),
+				'url'   => esc_url_raw( rest_url( $this->api->get_endpoint( 'polls' )->get_namespace() ) ),
 				'nonce' => wp_create_nonce( 'wp_rest' ),
 			)
 		);
