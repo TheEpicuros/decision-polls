@@ -61,8 +61,8 @@ $base_url    = remove_query_arg( 'poll_page', $current_url );
 					$formatted_date = date_i18n( get_option( 'date_format' ), strtotime( $created_at ) );
 				}
 
-				// Build poll URL.
-				$poll_url = add_query_arg( 'poll_id', $poll_id, get_permalink() );
+				// Build poll URL with the new clean URL format.
+				$poll_url = home_url( "poll/{$poll_id}/" );
 				?>
 				<div class="decision-polls-list-item">
 					<h3 class="decision-polls-list-title">
@@ -210,17 +210,9 @@ $base_url    = remove_query_arg( 'poll_page', $current_url );
 	
 	<?php if ( get_option( 'decision_polls_allow_frontend_creation', 1 ) ) : ?>
 		<div class="decision-polls-create-link">
-			<a href="<?php echo esc_url( add_query_arg( 'create_poll', '1', remove_query_arg( 'poll_id', get_permalink() ) ) ); ?>" class="decision-polls-create-button">
+			<a href="<?php echo esc_url( home_url( 'poll/create/' ) ); ?>" class="decision-polls-create-button">
 				<?php esc_html_e( 'Create New Poll', 'decision-polls' ); ?>
 			</a>
 		</div>
-		
-		<!-- Show poll creator form when create_poll parameter is present -->
-		<?php if ( isset( $_GET['create_poll'] ) ) : ?>
-			<?php
-			// Include poll creator template directly
-			include DECISION_POLLS_PLUGIN_DIR . 'templates/poll-creator.php';
-			?>
-		<?php endif; ?>
 	<?php endif; ?>
 </div>

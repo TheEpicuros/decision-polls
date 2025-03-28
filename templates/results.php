@@ -140,7 +140,7 @@ $last_updated = isset( $results['last_updated'] ) ? $results['last_updated'] : '
 	
 	<?php if ( get_option( 'decision_polls_allow_frontend_creation', 1 ) ) : ?>
 		<div class="decision-polls-create-link">
-			<a href="<?php echo esc_url( add_query_arg( 'create_poll', '1', get_permalink() ) ); ?>" class="button decision-polls-create-button">
+			<a href="<?php echo esc_url( home_url( 'poll/create/' ) ); ?>" class="button decision-polls-create-button">
 				<?php esc_html_e( 'Create New Poll', 'decision-polls' ); ?>
 			</a>
 		</div>

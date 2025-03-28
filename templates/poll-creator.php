@@ -159,11 +159,19 @@ jQuery(document).ready(function($) {
 		
 		var $submit = $form.find('button[type="submit"]');
 		
+		// Check if form is already being submitted to prevent duplicates
+		if ($submit.prop('disabled')) {
+			return false;
+		}
+		
 		// Clear previous messages.
 		$message.empty().hide();
 		
-		// Disable submit button.
+		// Disable submit button to prevent multiple submissions
 		$submit.prop('disabled', true);
+		
+		// Show loading indicator
+		$message.html('<p class="info">Creating your poll...</p>').fadeIn();
 		
 		// Get form data.
 		var formData = new FormData(this);
@@ -227,7 +235,8 @@ jQuery(document).ready(function($) {
 					$optionsContainer.find('.decision-poll-creator-option input').val('');
 					
 					// Show link to view poll and automatically redirect after a delay
-					var pollUrl = decisionPollsL10n.pollLink.replace('POLL_ID', response.data.poll.id);
+					// Use clean URL structure
+					var pollUrl = window.location.protocol + '//' + window.location.host + '/poll/' + response.data.poll.id + '/';
 					
 					$message.append('<p><a href="' + pollUrl + '" class="button">' + 
 						decisionPollsL10n.viewPoll + '</a></p>');

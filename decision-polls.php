@@ -89,6 +89,10 @@ final class Decision_Polls {
 		// Register API capabilities.
 		require_once DECISION_POLLS_PLUGIN_DIR . 'includes/core/class-api.php';
 		Decision_Polls_API::register_capabilities();
+
+		// Force flush rewrite rules to enable custom endpoints.
+		delete_option( 'decision_polls_rewrite_rules_flushed' );
+		flush_rewrite_rules();
 	}
 
 	/**
@@ -158,6 +162,9 @@ final class Decision_Polls {
 	 */
 	private function init_frontend() {
 		$this->load_class( 'frontend/class-frontend' );
+
+		// Load custom endpoints for clean URLs
+		require_once DECISION_POLLS_PLUGIN_DIR . 'includes/frontend/class-custom-endpoints.php';
 	}
 
 	/**

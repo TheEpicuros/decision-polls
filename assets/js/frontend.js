@@ -209,6 +209,7 @@ function submitVote(data, $form) {
 	var $submit = $form.find('.decision-poll-submit');
 	var pollId = data.poll_id;
 	var pollType = data.poll_type || '';
+	var pollUrl = window.location.protocol + '//' + window.location.host + '/poll/' + pollId + '/';
 	
 	// Add nonce to data.
 	data.nonce = $('#decision_polls_nonce').val();
@@ -406,11 +407,19 @@ function submitVote(data, $form) {
 			
 			var $submit = $form.find('button[type="submit"]');
 			
+			// Check if form is already being submitted to prevent duplicates
+			if ($submit.prop('disabled')) {
+				return false;
+			}
+			
 			// Clear previous messages.
 			$message.empty().hide();
 			
 			// Disable submit button.
 			$submit.prop('disabled', true);
+			
+			// Show loading indicator
+			$message.html('<p class="info">Creating your poll...</p>').fadeIn();
 			
 			// Get form data.
 			var formData = new FormData(this);
@@ -459,8 +468,8 @@ function submitVote(data, $form) {
 						// Show brief success message
 						$message.html('<p class="success">' + decisionPollsL10n.pollCreated + '</p>').fadeIn();
 						
-						// Get the URL for the new poll
-						var pollUrl = decisionPollsL10n.pollLink.replace('POLL_ID', response.data.poll.id);
+						// Get the URL for the new poll using clean URL format
+						var pollUrl = window.location.protocol + '//' + window.location.host + '/poll/' + response.data.poll.id + '/';
 						
 						// Automatically redirect to the new poll after a short delay
 						setTimeout(function() {

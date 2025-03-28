@@ -139,7 +139,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 
 		// Get results from cache or calculate if not cached.
 		$results_table = $this->get_table_name( self::RESULTS_TABLE_NAME );
-		$answers_table = $this->get_table_name( self::ANSWERS_TABLE_NAME );
+		$answers_table = $this->get_table_name( 'decision_poll_answers' );
 
 		$results = $this->wpdb->get_results(
 			$this->wpdb->prepare(
@@ -166,7 +166,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 			);
 		}
 
-		// Get total votes - fixed query to correctly count unique voters
+		// Get total votes - fixed query to correctly count unique voters.
 		$votes_table = $this->get_table_name( self::TABLE_NAME );
 		$total_votes = $this->wpdb->get_var(
 			$this->wpdb->prepare(
@@ -182,7 +182,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 			)
 		);
 
-		// Format results for API
+		// Format results for API.
 		$formatted_results = array();
 		foreach ( $results as $result ) {
 			$formatted_results[] = array(
@@ -202,7 +202,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 	}
 
 	/**
-	 * Record a single vote
+	 * Record a single vote.
 	 *
 	 * @param int $poll_id Poll ID.
 	 * @param int $answer_id Answer ID.
@@ -215,7 +215,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 		$user_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( $_SERVER['REMOTE_ADDR'] ) : '';
 		$now     = current_time( 'mysql' );
 
-		// Insert vote
+		// Insert vote.
 		$inserted = $this->wpdb->insert(
 			$votes_table,
 			array(
@@ -232,14 +232,14 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 			return false;
 		}
 
-		// Update results cache
+		// Update results cache.
 		$this->update_results_cache( $poll_id );
 
 		return true;
 	}
 
 	/**
-	 * Record multiple votes for multiple choice polls
+	 * Record multiple votes for multiple choice polls.
 	 *
 	 * @param int   $poll_id Poll ID.
 	 * @param array $answer_ids Array of answer IDs.
@@ -252,9 +252,9 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 		$user_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( $_SERVER['REMOTE_ADDR'] ) : '';
 		$now     = current_time( 'mysql' );
 
-		// Process each answer
+		// Process each answer.
 		foreach ( $answer_ids as $answer_id ) {
-			// Insert vote
+			// Insert vote.
 			$inserted = $this->wpdb->insert(
 				$votes_table,
 				array(
@@ -272,14 +272,14 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 			}
 		}
 
-		// Update results cache
+		// Update results cache.
 		$this->update_results_cache( $poll_id );
 
 		return true;
 	}
 
 	/**
-	 * Record ranked votes for ranked choice polls
+	 * Record ranked votes for ranked choice polls.
 	 *
 	 * @param int   $poll_id Poll ID.
 	 * @param array $ranked_answers Array of answer IDs in order of preference.
@@ -292,17 +292,17 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 		$user_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( $_SERVER['REMOTE_ADDR'] ) : '';
 		$now     = current_time( 'mysql' );
 
-		// In ranked choice, assign higher vote values to higher ranked choices
-		// First choice (index 0) gets the highest value
+		// In ranked choice, assign higher vote values to higher ranked choices.
+		// First choice (index 0) gets the highest value.
 		$total_answers = count( $ranked_answers );
 
-		// Process each answer with its rank
+		// Process each answer with its rank.
 		foreach ( $ranked_answers as $rank => $answer_id ) {
 			// Reverse the rank for vote value - highest rank gets highest value
 			// For example, in a poll with 3 options, first choice (rank 0) gets value 3
 			$vote_value = $total_answers - $rank;
 
-			// Insert vote
+			// Insert vote.
 			$inserted = $this->wpdb->insert(
 				$votes_table,
 				array(
@@ -320,14 +320,14 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 			}
 		}
 
-		// Update results cache
+		// Update results cache.
 		$this->update_results_cache( $poll_id );
 
 		return true;
 	}
 
 	/**
-	 * Record votes (internal method used by submit_vote)
+	 * Record votes (internal method used by submit_vote).
 	 *
 	 * @param int   $poll_id Poll ID.
 	 * @param array $answers Answer IDs to vote for.
@@ -343,12 +343,12 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 		// For ranked choice, the vote value corresponds to the preference order (1 = first choice)
 		$is_ranked = false;
 
-		// Get poll type
+		// Get poll type.
 		$poll_model = new Decision_Polls_Poll();
 		$poll       = $poll_model->get( $poll_id );
 		$is_ranked  = ( $poll['type'] === 'ranked' );
 
-		// Process each answer
+		// Process each answer.
 		foreach ( $answers as $index => $answer_data ) {
 			$answer_id  = null;
 			$vote_value = 1;
@@ -365,7 +365,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 				$vote_value = $is_ranked ? $index + 1 : 1;
 			}
 
-			// Insert vote
+			// Insert vote.
 			$inserted = $this->wpdb->insert(
 				$votes_table,
 				array(
@@ -387,7 +387,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 	}
 
 	/**
-	 * Update results cache for a poll
+	 * Update results cache for a poll.
 	 *
 	 * @param int $poll_id Poll ID.
 	 * @return bool Whether the cache was updated.
@@ -395,17 +395,17 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 	private function update_results_cache( $poll_id ) {
 		$votes_table   = $this->get_table_name( self::TABLE_NAME );
 		$results_table = $this->get_table_name( self::RESULTS_TABLE_NAME );
-		$answers_table = $this->get_table_name( self::ANSWERS_TABLE_NAME );
+		$answers_table = $this->get_table_name( 'decision_poll_answers' );
 
-		// Get poll type
+		// Get poll type.
 		$poll_model = new Decision_Polls_Poll();
 		$poll       = $poll_model->get( $poll_id );
 		$is_ranked  = ( $poll && $poll['type'] === 'ranked' );
 
-		// Clear existing results
+		// Clear existing results.
 		$this->wpdb->delete( $results_table, array( 'poll_id' => $poll_id ) );
 
-		// Get total voters (unique combination of user_id and user_ip)
+		// Get total voters (unique combination of user_id and user_ip).
 		$total_voters = $this->wpdb->get_var(
 			$this->wpdb->prepare(
 				"SELECT COUNT(DISTINCT CASE WHEN user_id > 0 THEN user_id ELSE CONCAT('ip:', user_ip) END) 
@@ -415,11 +415,11 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 		);
 
 		if ( $total_voters <= 0 ) {
-			// No votes yet, nothing to cache
+			// No votes yet, nothing to cache.
 			return false;
 		}
 
-		// Get all answers for the poll
+		// Get all answers for the poll.
 		$answers = $this->wpdb->get_results(
 			$this->wpdb->prepare(
 				"SELECT id FROM $answers_table WHERE poll_id = %d",
@@ -428,13 +428,13 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 			ARRAY_A
 		);
 
-		// Calculate votes for each answer
+		// Calculate votes for each answer.
 		foreach ( $answers as $answer ) {
 			$answer_id = $answer['id'];
 
 			if ( $is_ranked ) {
-				// For ranked polls, use sum of vote values instead of count
-				// Higher value = better rank
+				// For ranked polls, use sum of vote values instead of count.
+				// Higher value = better rank.
 				$votes_count = $this->wpdb->get_var(
 					$this->wpdb->prepare(
 						"SELECT SUM(vote_value) FROM $votes_table WHERE poll_id = %d AND answer_id = %d",
@@ -443,13 +443,13 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 					)
 				);
 
-				// Calculate percentage based on max possible points
+				// Calculate percentage based on max possible points.
 				// If we have 3 voters and 5 choices, max points per choice is 3*5=15
 				$max_answers  = count( $answers );
 				$max_possible = $total_voters * $max_answers;
 				$percentage   = ( $votes_count / $max_possible ) * 100;
 			} else {
-				// For standard/multiple polls, use count as before
+				// For standard/multiple polls, use count as before.
 				$votes_count = $this->wpdb->get_var(
 					$this->wpdb->prepare(
 						"SELECT COUNT(*) FROM $votes_table WHERE poll_id = %d AND answer_id = %d",
@@ -461,10 +461,10 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 				$percentage = ( $votes_count / $total_voters ) * 100;
 			}
 
-			// Make sure votes_count is a number
+			// Make sure votes_count is a number.
 			$votes_count = $votes_count ? $votes_count : 0;
 
-			// Insert result into cache
+			// Insert result into cache.
 			$this->wpdb->insert(
 				$results_table,
 				array(
@@ -481,7 +481,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 	}
 
 	/**
-	 * Format data for database insertion
+	 * Format data for database insertion.
 	 *
 	 * @param array $data Data to format.
 	 * @return array Formatted data.
@@ -493,13 +493,13 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 	}
 
 	/**
-	 * Format data from database for API response
+	 * Format data from database for API response.
 	 *
 	 * @param object $data Data to format.
 	 * @return array Formatted data.
 	 */
 	protected function format_for_api( $data ) {
-		// Base implementation for the abstract method
+		// Base implementation for the abstract method.
 		// This method is primarily used for Vote results which is handled by get_results()
 		return (array) $data;
 	}
