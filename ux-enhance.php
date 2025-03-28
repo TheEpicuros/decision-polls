@@ -34,11 +34,14 @@ class Decision_Polls_UX_Enhancements {
 	 * Register and enqueue UX improvement styles.
 	 */
 	public static function register_ux_styles() {
+		$css_file = 'assets/css/ux-improvements.css';
+		$css_path = plugin_dir_path( __FILE__ ) . $css_file;
+		
 		wp_register_style(
 			'decision-polls-ux-improvements',
-			plugins_url( 'assets/css/ux-improvements.css', dirname( __FILE__ ) ),
+			plugins_url( $css_file, __FILE__ ),
 			array( 'decision-polls' ),
-			filemtime( plugin_dir_path( dirname( __FILE__ ) ) . 'assets/css/ux-improvements.css' )
+			file_exists( $css_path ) ? filemtime( $css_path ) : DECISION_POLLS_VERSION
 		);
 		
 		wp_enqueue_style( 'decision-polls-ux-improvements' );
