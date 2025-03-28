@@ -210,21 +210,46 @@ function submitVote(data, $form) {
 	var pollId = data.poll_id;
 	var pollType = data.poll_type || '';
 	
-	// Get the current URL to determine if we're using the clean URL format or not
-	var currentUrl = window.location.href;
+	// Try several different ways to construct the results URL
 	var pollUrl;
+	var siteUrl = window.location.protocol + '//' + window.location.host;
+	var currentPath = window.location.pathname;
+	var currentUrl = window.location.href;
 	
-	// Create the proper poll URL based on the current site structure
-	if (currentUrl.indexOf('/poll/') !== -1) {
-		// We're using the clean URL format
-		pollUrl = window.location.protocol + '//' + window.location.host + '/poll/' + pollId + '/';
-	} else {
-		// We might be using query parameters or shortcodes
-		// Try to keep the same URL structure but add a results parameter
-		pollUrl = currentUrl.split('?')[0] + '?poll_id=' + pollId + '&show_results=1';
+	// Method 1: Use the standard clean URL format (most reliable)
+	var standardUrl = siteUrl + '/poll/' + pollId + '/';
+	
+	// Method 2: Try adding query parameters to current URL
+	var queryParamUrl = currentUrl.split('?')[0] + '?poll_id=' + pollId + '&show_results=1';
+	
+	// Method 3: Check for a polls page format like /polls/ and build accordingly
+	var pollsPageUrl = '';
+	if (currentPath.includes('/polls/')) {
+		// If we're in a /polls/ directory, try a relative approach
+		pollsPageUrl = siteUrl + currentPath.split('/polls/')[0] + '/polls/?poll_id=' + pollId + '&show_results=1';
 	}
 	
-	console.log('Poll URL for redirection: ' + pollUrl);
+	// Determine which URL to use - preference order
+	if (currentUrl.indexOf('/poll/') !== -1) {
+		// We're already using clean URLs, so use that format
+		pollUrl = standardUrl;
+	} else if (currentPath.includes('/polls/')) {
+		// We're on a polls collection page, so use that format
+		pollUrl = pollsPageUrl;
+	} else {
+		// Fall back to query parameters on current page
+		pollUrl = queryParamUrl;
+	}
+	
+	// Add timestamp to prevent caching issues
+	if (pollUrl.indexOf('?') !== -1) {
+		pollUrl += '&ts=' + new Date().getTime();
+	} else {
+		pollUrl += '?ts=' + new Date().getTime();
+	}
+	
+	// Log URL for debugging
+	console.log('Poll URL for redirection determined as: ' + pollUrl);
 	
 	// Add nonce to data.
 	data.nonce = $('#decision_polls_nonce').val();
@@ -338,10 +363,13 @@ function submitVote(data, $form) {
 						});
 					}, 1000);
 				} else {
-					// Navigate to the poll results page instead of just reloading
+					// Show a clear indication we're about to redirect
+					$message.html('<p class="success">' + decisionPollsL10n.voteSuccess + ' Redirecting to results...</p>').fadeIn();
+					
+					// Navigate to the poll results page after a delay
 					setTimeout(function() {
-						// Try direct navigation to ensure we're showing results
-						window.location.href = pollUrl;
+						// Force reload to the results page
+						window.location.replace(pollUrl);
 					}, 1500);
 				}
 			},

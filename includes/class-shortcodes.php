@@ -27,6 +27,64 @@ class Decision_Polls_Shortcodes {
 
 		// Poll creation form shortcode.
 		add_shortcode( 'decision_poll_creator', array( __CLASS__, 'poll_creator_shortcode' ) );
+		
+		// Server-side redirection helper for fallback when JavaScript fails.
+		add_action( 'rest_after_insert_decision_polls_vote', array( __CLASS__, 'handle_redirect_after_vote' ), 10, 3 );
+		
+		// Process URL parameters on page load.
+		add_action( 'wp', array( __CLASS__, 'process_url_parameters' ) );
+	}
+	
+	/**
+	 * Process URL parameters for poll display.
+	 * 
+	 * This helps with redirection issues by setting cookies that can be read later.
+	 */
+	public static function process_url_parameters() {
+		// If show_results is in the URL, set a cookie to remember this preference.
+		if ( isset( $_GET['show_results'] ) && '1' === $_GET['show_results'] ) {
+			if ( isset( $_GET['poll_id'] ) ) {
+				$poll_id = absint( $_GET['poll_id'] );
+				if ( $poll_id > 0 ) {
+					// Set a cookie to remember to show results for this poll.
+					// This cookie will be used if JavaScript redirection fails.
+					setcookie( 'decision_polls_show_results_' . $poll_id, '1', time() + 3600, '/' );
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Handle redirection after a vote is cast via the REST API.
+	 * 
+	 * @param WP_REST_Response $response The response object.
+	 * @param object           $handler  The handler instance.
+	 * @param WP_REST_Request  $request  The request object.
+	 * @return WP_REST_Response The response object.
+	 */
+	public static function handle_redirect_after_vote( $response, $handler, $request ) {
+		// Only process if this is a vote submission.
+		if ( ! isset( $request['poll_id'] ) ) {
+			return $response;
+		}
+		
+		$poll_id = absint( $request['poll_id'] );
+		
+		// Add redirection URL to the response for JavaScript fallback.
+		if ( isset( $response->data ) ) {
+			// Build the redirect URL.
+			$site_url = get_site_url();
+			$clean_url = $site_url . '/poll/' . $poll_id . '/';
+			$query_url = $site_url . '/polls/?poll_id=' . $poll_id . '&show_results=1';
+			
+			// Determine which URL format to use based on whether permalinks are enabled.
+			$redirect_url = get_option( 'permalink_structure' ) ? $clean_url : $query_url;
+			
+			// Add the URL to the response for JavaScript to use.
+			$response->data['redirect_url'] = $redirect_url;
+		}
+		
+		return $response;
 	}
 
 	/**
@@ -114,7 +172,22 @@ class Decision_Polls_Shortcodes {
 		
 		// Case 1: Display single poll if poll_id is present in the URL
 		if ( isset( $_GET['poll_id'] ) && absint( $_GET['poll_id'] ) > 0 ) {
-			return self::poll_shortcode( array( 'id' => absint( $_GET['poll_id'] ) ) );
+			$poll_id = absint( $_GET['poll_id'] );
+			$show_results = false;
+			
+			// Check if we should show results based on URL or cookie.
+			if ( isset( $_GET['show_results'] ) && '1' === $_GET['show_results'] ) {
+				$show_results = true;
+			} elseif ( isset( $_COOKIE['decision_polls_show_results_' . $poll_id] ) ) {
+				$show_results = true;
+				// Clear the cookie since we've used it.
+				setcookie( 'decision_polls_show_results_' . $poll_id, '', time() - 3600, '/' );
+			}
+			
+			return self::poll_shortcode( array( 
+				'id' => $poll_id, 
+				'show_results' => $show_results 
+			) );
 		}
 
 		// Case 2: Display poll creator if create_poll is in the URL
