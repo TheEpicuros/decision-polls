@@ -76,8 +76,25 @@ class Decision_Polls_Custom_Endpoints {
 	public static function handle_template_redirect() {
 		global $wp_query;
 
+		// First, handle GET parameters for backward compatibility and direct access.
+		if ( isset( $_GET['poll_id'] ) && ! isset( $wp_query->query_vars['poll_id'] ) ) {
+			// If poll_id is directly in GET params, set in query vars.
+			$wp_query->set( 'poll_id', absint( $_GET['poll_id'] ) );
+			$wp_query->query_vars['poll_id'] = absint( $_GET['poll_id'] );
+			
+			// Also set show_results if present.
+			if ( isset( $_GET['show_results'] ) && '1' === $_GET['show_results'] ) {
+				$wp_query->set( 'show_results', '1' );
+				$wp_query->query_vars['show_results'] = '1';
+			}
+		}
+
 		// Check if we're on a poll create page.
 		if ( isset( $wp_query->query_vars['poll_action'] ) && 'create' === $wp_query->query_vars['poll_action'] ) {
+			// Clear any 404 status.
+			status_header( 200 );
+			$wp_query->is_404 = false;
+            
 			// Set a flag that this is a poll creation page.
 			$wp_query->is_page     = true;
 			$wp_query->is_singular = true;
@@ -97,6 +114,10 @@ class Decision_Polls_Custom_Endpoints {
 			$poll_id = absint( $wp_query->query_vars['poll_id'] );
 
 			if ( $poll_id > 0 ) {
+				// Clear any 404 status.
+				status_header( 200 );
+				$wp_query->is_404 = false;
+                
 				// Set a flag that this is a single poll view page.
 				$wp_query->is_page     = true;
 				$wp_query->is_singular = true;
@@ -108,6 +129,11 @@ class Decision_Polls_Custom_Endpoints {
 				$show_results = isset( $wp_query->query_vars['show_results'] ) &&
 					'1' === $wp_query->query_vars['show_results'];
 				
+				// Also check cookies for redirection after vote.
+				if ( ! $show_results && isset( $_COOKIE['decision_polls_show_results_' . $poll_id] ) ) {
+					$show_results = true;
+				}
+				
 				// Store the show_results flag in the query for later use.
 				$wp_query->set( 'decision_polls_show_results', $show_results );
 
@@ -117,6 +143,26 @@ class Decision_Polls_Custom_Endpoints {
 				// Load the template.
 				add_filter( 'template_include', array( __CLASS__, 'load_single_poll_template' ) );
 			}
+		}
+
+		// Handle direct 'create_poll' parameter.
+		if ( isset( $_GET['create_poll'] ) && ! isset( $wp_query->query_vars['poll_action'] ) ) {
+			// Clear any 404 status.
+			status_header( 200 );
+			$wp_query->is_404 = false;
+            
+			// Set a flag that this is a poll creation page.
+			$wp_query->is_page     = true;
+			$wp_query->is_singular = true;
+			$wp_query->is_home     = false;
+			$wp_query->is_archive  = false;
+			$wp_query->is_category = false;
+
+			// Set the page title.
+			add_filter( 'the_title', array( __CLASS__, 'set_create_poll_title' ), 10, 2 );
+
+			// Load the template.
+			add_filter( 'template_include', array( __CLASS__, 'load_poll_create_template' ) );
 		}
 	}
 
@@ -204,7 +250,19 @@ class Decision_Polls_Custom_Endpoints {
 			$poll       = $poll_model->get( $poll_id );
 
 			if ( ! $poll ) {
+				// If poll doesn't exist, try to load the 404 template
+				if ( file_exists( get_theme_file_path( '404.php' ) ) ) {
+					return get_theme_file_path( '404.php' );
+				}
+                
+				// Don't modify the template if poll not found
 				return $template;
+			}
+
+			// Make sure we don't have a 404 status if the poll exists
+			if ( is_404() ) {
+				status_header( 200 );
+				$wp_query->is_404 = false;
 			}
 
 			// Render header.
@@ -214,7 +272,6 @@ class Decision_Polls_Custom_Endpoints {
 			echo '<h1 class="entry-title">' . esc_html( $poll['title'] ) . '</h1>';
 
 			// Check if we need to show results.
-			global $wp_query;
 			$show_results = null !== $wp_query->get( 'decision_polls_show_results' ) &&
 				$wp_query->get( 'decision_polls_show_results' );
 
