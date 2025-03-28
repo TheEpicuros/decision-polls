@@ -21,13 +21,13 @@ class Decision_Polls_Custom_Endpoints {
 	public static function init() {
 		// Register the endpoint.
 		add_action( 'init', array( __CLASS__, 'add_endpoints' ) );
-		
+
 		// Add query vars.
 		add_filter( 'query_vars', array( __CLASS__, 'add_query_vars' ) );
-		
+
 		// Handle template redirect.
 		add_action( 'template_redirect', array( __CLASS__, 'handle_template_redirect' ) );
-		
+
 		// Filter permalinks for polls.
 		add_filter( 'page_link', array( __CLASS__, 'filter_poll_permalink' ), 10, 2 );
 	}
@@ -42,14 +42,14 @@ class Decision_Polls_Custom_Endpoints {
 			'index.php?poll_action=create',
 			'top'
 		);
-		
+
 		// Add endpoint for single poll view.
 		add_rewrite_rule(
 			'^poll/([0-9]+)/?$',
 			'index.php?poll_id=$matches[1]',
 			'top'
 		);
-		
+
 		// Flush rewrite rules only once.
 		if ( ! get_option( 'decision_polls_rewrite_rules_flushed' ) ) {
 			flush_rewrite_rules();
@@ -78,40 +78,40 @@ class Decision_Polls_Custom_Endpoints {
 		// Check if we're on a poll create page.
 		if ( isset( $wp_query->query_vars['poll_action'] ) && 'create' === $wp_query->query_vars['poll_action'] ) {
 			// Set a flag that this is a poll creation page.
-			$wp_query->is_page = true;
+			$wp_query->is_page     = true;
 			$wp_query->is_singular = true;
-			$wp_query->is_home = false;
-			$wp_query->is_archive = false;
+			$wp_query->is_home     = false;
+			$wp_query->is_archive  = false;
 			$wp_query->is_category = false;
-			
+
 			// Set the page title.
 			add_filter( 'the_title', array( __CLASS__, 'set_create_poll_title' ), 10, 2 );
-			
+
 			// Load the template.
 			add_filter( 'template_include', array( __CLASS__, 'load_poll_create_template' ) );
 		}
-		
+
 		// Check if we're on a single poll view page.
 		if ( isset( $wp_query->query_vars['poll_id'] ) ) {
 			$poll_id = absint( $wp_query->query_vars['poll_id'] );
-			
+
 			if ( $poll_id > 0 ) {
 				// Set a flag that this is a single poll view page.
-				$wp_query->is_page = true;
+				$wp_query->is_page     = true;
 				$wp_query->is_singular = true;
-				$wp_query->is_home = false;
-				$wp_query->is_archive = false;
+				$wp_query->is_home     = false;
+				$wp_query->is_archive  = false;
 				$wp_query->is_category = false;
-				
+
 				// Set the page title.
 				add_filter( 'the_title', array( __CLASS__, 'set_poll_title' ), 10, 2 );
-				
+
 				// Load the template.
 				add_filter( 'template_include', array( __CLASS__, 'load_single_poll_template' ) );
 			}
 		}
 	}
-	
+
 	/**
 	 * Set the title for the poll creation page.
 	 *
@@ -123,10 +123,10 @@ class Decision_Polls_Custom_Endpoints {
 		if ( is_admin() || ! in_the_loop() ) {
 			return $title;
 		}
-		
+
 		return __( 'Create a New Poll', 'decision-polls' );
 	}
-	
+
 	/**
 	 * Set the title for the single poll page.
 	 *
@@ -138,23 +138,23 @@ class Decision_Polls_Custom_Endpoints {
 		if ( is_admin() || ! in_the_loop() ) {
 			return $title;
 		}
-		
+
 		global $wp_query;
 		$poll_id = isset( $wp_query->query_vars['poll_id'] ) ? absint( $wp_query->query_vars['poll_id'] ) : 0;
-		
+
 		if ( $poll_id > 0 ) {
-			// Get poll title from database
+			// Get poll title from database.
 			$poll_model = new Decision_Polls_Poll();
-			$poll = $poll_model->get( $poll_id );
-			
+			$poll       = $poll_model->get( $poll_id );
+
 			if ( $poll && isset( $poll['title'] ) ) {
 				return esc_html( $poll['title'] );
 			}
 		}
-		
+
 		return __( 'View Poll', 'decision-polls' );
 	}
-	
+
 	/**
 	 * Load the template for poll creation.
 	 *
@@ -164,22 +164,22 @@ class Decision_Polls_Custom_Endpoints {
 	public static function load_poll_create_template( $template ) {
 		// Render header.
 		get_header();
-		
+
 		echo '<div class="decision-polls-page-container">';
 		echo '<h1 class="entry-title">' . esc_html__( 'Create a New Poll', 'decision-polls' ) . '</h1>';
-		
+
 		// Display the poll creator form.
 		echo do_shortcode( '[decision_poll_creator]' );
-		
+
 		echo '</div>';
-		
+
 		// Render footer.
 		get_footer();
-		
+
 		// Return a blank template to prevent further output.
 		return DECISION_POLLS_PLUGIN_DIR . 'templates/blank-template.php';
 	}
-	
+
 	/**
 	 * Load the template for a single poll view.
 	 *
@@ -189,37 +189,37 @@ class Decision_Polls_Custom_Endpoints {
 	public static function load_single_poll_template( $template ) {
 		global $wp_query;
 		$poll_id = isset( $wp_query->query_vars['poll_id'] ) ? absint( $wp_query->query_vars['poll_id'] ) : 0;
-		
+
 		if ( $poll_id > 0 ) {
-			// Get poll from database
+			// Get poll from database.
 			$poll_model = new Decision_Polls_Poll();
-			$poll = $poll_model->get( $poll_id );
-			
+			$poll       = $poll_model->get( $poll_id );
+
 			if ( ! $poll ) {
 				return $template;
 			}
-			
-			// Render header
+
+			// Render header.
 			get_header();
-			
+
 			echo '<div class="decision-polls-page-container">';
 			echo '<h1 class="entry-title">' . esc_html( $poll['title'] ) . '</h1>';
-			
-			// Display the poll shortcode with the appropriate poll ID
+
+			// Display the poll shortcode with the appropriate poll ID.
 			echo do_shortcode( '[decision_poll id="' . esc_attr( $poll_id ) . '"]' );
-			
+
 			echo '</div>';
-			
-			// Render footer
+
+			// Render footer.
 			get_footer();
-			
-			// Return a blank template to prevent further output
+
+			// Return a blank template to prevent further output.
 			return DECISION_POLLS_PLUGIN_DIR . 'templates/blank-template.php';
 		}
-		
+
 		return $template;
 	}
-	
+
 	/**
 	 * Filter the poll permalink to use our clean URL structure.
 	 *
@@ -232,21 +232,21 @@ class Decision_Polls_Custom_Endpoints {
 		if ( is_admin() ) {
 			return $permalink;
 		}
-		
+
 		// Replace poll creation links.
 		if ( strpos( $permalink, 'create_poll=1' ) !== false ) {
 			return home_url( 'poll/create/' );
 		}
-		
+
 		// Replace single poll view links.
 		if ( preg_match( '/poll_id=(\d+)/', $permalink, $matches ) ) {
 			$poll_id = $matches[1];
 			return home_url( "poll/{$poll_id}/" );
 		}
-		
+
 		return $permalink;
 	}
-	
+
 	/**
 	 * Get the URL for creating a new poll.
 	 *
@@ -255,7 +255,7 @@ class Decision_Polls_Custom_Endpoints {
 	public static function get_create_poll_url() {
 		return home_url( 'poll/create/' );
 	}
-	
+
 	/**
 	 * Get the URL for viewing a poll.
 	 *

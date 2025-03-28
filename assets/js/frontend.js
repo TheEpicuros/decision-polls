@@ -366,18 +366,8 @@ function submitVote(data, $form) {
 		// Initially hide or show multiple choice options based on selected type.
 		toggleMultipleOptions();
 		
-		// Add a new option field.
-		$addButton.on('click', function(e) {
-			e.preventDefault();
-			
-			var optionCount = $optionsContainer.find('.decision-poll-creator-option').length + 1;
-			var optionHtml = '<div class="decision-poll-creator-option">' +
-				'<input type="text" name="poll_option[]" placeholder="' + decisionPollsL10n.option + ' ' + optionCount + '" required>' +
-				'<button type="button" class="decision-poll-creator-remove-option">' + decisionPollsL10n.remove + '</button>' +
-				'</div>';
-			
-			$optionsContainer.append(optionHtml);
-		});
+		// The click handler for add button is defined in the template's inline script
+		// We don't need to attach it here to avoid duplicates
 		
 		// Remove an option field.
 		$optionsContainer.on('click', '.decision-poll-creator-remove-option', function() {

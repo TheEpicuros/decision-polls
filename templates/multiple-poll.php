@@ -21,7 +21,7 @@ $poll_container_id = 'decision-poll-' . $poll_id;
 
 // Get number of allowed choices.
 $max_choices = isset( $poll['multiple_choices'] ) && $poll['multiple_choices'] > 0 
-	? (int) $poll['multiple_choices'] 
+	? (int) $poll['multiple_choices']
 	: count( $poll['answers'] );
 ?>
 

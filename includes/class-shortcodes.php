@@ -119,12 +119,8 @@ class Decision_Polls_Shortcodes {
 
 		// Case 2: Display poll creator if create_poll is in the URL
 		if ( isset( $_GET['create_poll'] ) ) {
-			// Set a flag to prevent duplicate rendering
-			if ( ! did_action( 'decision_polls_creator_shortcode_rendered' ) ) {
-				// Return the poll creator shortcode output ONLY
-				return self::poll_creator_shortcode( array() );
-			}
-			return ''; // Return empty if already rendered
+			// Return the poll creator shortcode output ONLY - don't render poll list
+			return self::poll_creator_shortcode( array() );
 		}
 
 		// Case 3: If we're here, we're displaying the poll list

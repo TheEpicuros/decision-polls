@@ -18,7 +18,6 @@ $redirect_url = isset( $atts['redirect'] ) && ! empty( $atts['redirect'] ) ? $at
 ?>
 
 <div id="<?php echo esc_attr( $form_id ); ?>" class="decision-poll-creator">
-	<h2><?php esc_html_e( 'Create a New Poll', 'decision-polls' ); ?></h2>
 	
 	<form class="decision-poll-creator-form" method="post">
 		<?php wp_nonce_field( 'decision_polls_create', 'decision_polls_creator_nonce' ); ?>
@@ -42,14 +41,6 @@ $redirect_url = isset( $atts['redirect'] ) && ! empty( $atts['redirect'] ) ? $at
 				<option value="multiple"><?php esc_html_e( 'Multiple Choice', 'decision-polls' ); ?></option>
 				<option value="ranked"><?php esc_html_e( 'Ranked Choice', 'decision-polls' ); ?></option>
 			</select>
-		</div>
-		
-		<div class="decision-poll-multiple-options" style="display: none;">
-			<div class="decision-poll-creator-field">
-				<label for="poll_max_choices"><?php esc_html_e( 'Maximum Choices', 'decision-polls' ); ?></label>
-				<input type="number" name="poll_max_choices" id="poll_max_choices" min="0" value="0">
-				<p class="description"><?php esc_html_e( 'Maximum number of options a voter can select. Enter 0 for unlimited.', 'decision-polls' ); ?></p>
-			</div>
 		</div>
 		
 		<div class="decision-poll-creator-field">
@@ -78,6 +69,14 @@ $redirect_url = isset( $atts['redirect'] ) && ! empty( $atts['redirect'] ) ? $at
 				<?php esc_html_e( 'Make poll private', 'decision-polls' ); ?>
 			</label>
 			<p class="description"><?php esc_html_e( 'Private polls are only accessible via direct link.', 'decision-polls' ); ?></p>
+		</div>
+		
+		<div class="decision-poll-multiple-options" style="display: none;">
+			<div class="decision-poll-creator-field">
+				<label for="poll_max_choices"><?php esc_html_e( 'Maximum Choices', 'decision-polls' ); ?></label>
+				<input type="number" name="poll_max_choices" id="poll_max_choices" min="0" value="0">
+				<p class="description"><?php esc_html_e( 'Maximum number of options a voter can select. Enter 0 for unlimited.', 'decision-polls' ); ?></p>
+			</div>
 		</div>
 		
 		<?php if ( ! empty( $redirect_url ) ) : ?>
@@ -234,17 +233,14 @@ jQuery(document).ready(function($) {
 					$optionsContainer.find('.decision-poll-creator-option').not(':first, :nth-child(2)').remove();
 					$optionsContainer.find('.decision-poll-creator-option input').val('');
 					
-					// Show link to view poll and automatically redirect after a delay
+					// Automatically redirect to the poll right away
 					// Use clean URL structure
 					var pollUrl = window.location.protocol + '//' + window.location.host + '/poll/' + response.data.poll.id + '/';
 					
-					$message.append('<p><a href="' + pollUrl + '" class="button">' + 
-						decisionPollsL10n.viewPoll + '</a></p>');
-						
-					// Redirect to the poll after 1.5 seconds
+					// Redirect immediately after a brief delay (just enough to see success message)
 					setTimeout(function() {
 						window.location.href = pollUrl;
-					}, 1500);
+					}, 1000);
 				} else {
 					$message.html('<p class="error">' + decisionPollsL10n.pollCreateError + 
 						(response.data && response.data.message ? ': ' + response.data.message : '') + 
