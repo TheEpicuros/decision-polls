@@ -210,46 +210,33 @@ function submitVote(data, $form) {
 	var pollId = data.poll_id;
 	var pollType = data.poll_type || '';
 	
-	// Try several different ways to construct the results URL
-	var pollUrl;
+	// DIRECT APPROACH: Force a single consistent URL format
+	// This is the simplest and most reliable approach
 	var siteUrl = window.location.protocol + '//' + window.location.host;
-	var currentPath = window.location.pathname;
-	var currentUrl = window.location.href;
 	
-	// Method 1: Use the standard clean URL format (most reliable)
-	var standardUrl = siteUrl + '/poll/' + pollId + '/';
+	// For live site: Use polls collection page format with forced parameters
+	var pollsUrl = siteUrl + '/polls/?poll_id=' + pollId + '&show_results=1';
 	
-	// Method 2: Try adding query parameters to current URL
-	var queryParamUrl = currentUrl.split('?')[0] + '?poll_id=' + pollId + '&show_results=1';
+	// For clean URLs: Use direct poll URL format if supported
+	var cleanUrl = siteUrl + '/poll/' + pollId + '/';
 	
-	// Method 3: Check for a polls page format like /polls/ and build accordingly
-	var pollsPageUrl = '';
-	if (currentPath.includes('/polls/')) {
-		// If we're in a /polls/ directory, try a relative approach
-		pollsPageUrl = siteUrl + currentPath.split('/polls/')[0] + '/polls/?poll_id=' + pollId + '&show_results=1';
-	}
+	// Choose which URL to use - simpler logic, prefer polls page format
+	var pollUrl = pollsUrl;
 	
-	// Determine which URL to use - preference order
-	if (currentUrl.indexOf('/poll/') !== -1) {
-		// We're already using clean URLs, so use that format
-		pollUrl = standardUrl;
-	} else if (currentPath.includes('/polls/')) {
-		// We're on a polls collection page, so use that format
-		pollUrl = pollsPageUrl;
-	} else {
-		// Fall back to query parameters on current page
-		pollUrl = queryParamUrl;
-	}
+	// Force a cache-busting parameter
+	pollUrl += '&nocache=' + new Date().getTime();
 	
-	// Add timestamp to prevent caching issues
-	if (pollUrl.indexOf('?') !== -1) {
-		pollUrl += '&ts=' + new Date().getTime();
-	} else {
-		pollUrl += '?ts=' + new Date().getTime();
-	}
+	// Save poll URL as a global variable for emergency redirection
+	window.targetPollUrl = pollUrl;
 	
-	// Log URL for debugging
-	console.log('Poll URL for redirection determined as: ' + pollUrl);
+	// DEBUG: Log URL for debugging
+	console.log('DECISION POLLS - Redirection target URL: ' + pollUrl);
+	
+	// Set a global emergency timeout for redirection in case AJAX succeeds but redirect fails
+	window.emergencyRedirectTimer = setTimeout(function() {
+		console.log('DECISION POLLS - Emergency redirect triggered');
+		window.location.href = window.targetPollUrl;
+	}, 5000); // 5 second timeout
 	
 	// Add nonce to data.
 	data.nonce = $('#decision_polls_nonce').val();
@@ -366,14 +353,37 @@ function submitVote(data, $form) {
 					// Show a clear indication we're about to redirect
 					$message.html('<p class="success">' + decisionPollsL10n.voteSuccess + ' Redirecting to results...</p>').fadeIn();
 					
-					// Navigate to the poll results page after a delay
-					setTimeout(function() {
-						// Force reload to the results page
+					// Clear emergency timer
+					clearTimeout(window.emergencyRedirectTimer);
+					
+					// IMMEDIATE REDIRECT - don't wait
+					console.log('DECISION POLLS - Immediate redirect to: ' + pollUrl);
+					
+					// Try multiple redirect methods
+					try {
+						// Method 1: Replace current page (cleanest)
 						window.location.replace(pollUrl);
-					}, 1500);
+						
+						// Method 2: Backup with regular navigation
+						setTimeout(function() {
+							window.location.href = pollUrl;
+						}, 500);
+						
+						// Method 3: Last resort, reload entire page
+						setTimeout(function() {
+							window.location = pollUrl;
+						}, 1000);
+					} catch(e) {
+						console.error('DECISION POLLS - Redirect error: ' + e.message);
+						// Final fallback - just reload
+						window.location.reload();
+					}
 				}
 			},
 			error: function(xhr) {
+				// Clear emergency timer
+				clearTimeout(window.emergencyRedirectTimer);
+				
 				// Re-enable submit button.
 				$submit.prop('disabled', false);
 				
@@ -383,6 +393,8 @@ function submitVote(data, $form) {
 					: decisionPollsL10n.voteError;
 				
 				$message.html('<p class="error">' + errorMessage + '</p>').fadeIn();
+				
+				console.error('DECISION POLLS - AJAX error: ', xhr);
 			}
 		});
 	}
