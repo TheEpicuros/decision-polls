@@ -160,6 +160,9 @@ final class Decision_Polls {
 	 */
 	private function init_admin() {
 		$this->load_class( 'admin/class-admin' );
+		
+		// Load admin debug functionality.
+		require_once DECISION_POLLS_PLUGIN_DIR . 'includes/admin/class-decision-polls-admin-debug.php';
 	}
 
 	/**
