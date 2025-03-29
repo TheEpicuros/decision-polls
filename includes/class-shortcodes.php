@@ -168,19 +168,29 @@ class Decision_Polls_Shortcodes {
 	 * @return string Shortcode output.
 	 */
 	public static function polls_list_shortcode( $atts ) {
-		// IMPORTANT: Handle special cases - show only one view based on parameters
-
-		// Case 1: Display single poll if poll_id is present in the URL
+		// IMPORTANT: Handle special cases - show only one view based on parameters.
+		
+		// Case 1: Display single poll if poll_id is present in the URL.
 		if ( isset( $_GET['poll_id'] ) && absint( $_GET['poll_id'] ) > 0 ) {
-			$poll_id      = absint( $_GET['poll_id'] );
+			$poll_id = absint( $_GET['poll_id'] );
 			$show_results = false;
+			
+			// Validate poll existence before proceeding.
+			$poll_model = new Decision_Polls_Poll();
+			$poll = $poll_model->get( $poll_id );
+			
+			if ( ! $poll ) {
+				return '<div class="decision-polls-error">' . 
+					esc_html__( 'The requested poll could not be found.', 'decision-polls' ) . 
+					'</div>';
+			}
 
 			// Check if we should show results based on URL or cookie.
 			if ( isset( $_GET['show_results'] ) && '1' === $_GET['show_results'] ) {
 				$show_results = true;
 			} elseif ( isset( $_COOKIE[ 'decision_polls_show_results_' . $poll_id ] ) ) {
 				$show_results = true;
-				// Clear the cookie since we've used it.
+				// Clear the cookie as it's been processed.
 				setcookie( 'decision_polls_show_results_' . $poll_id, '', time() - 3600, '/' );
 			}
 
@@ -192,13 +202,14 @@ class Decision_Polls_Shortcodes {
 			);
 		}
 
-		// Case 2: Display poll creator if create_poll is in the URL
-		if ( isset( $_GET['create_poll'] ) ) {
-			// Return the poll creator shortcode output ONLY - don't render poll list
+		// Case 2: Display poll creator if create_poll is in the URL.
+		// Ensuring poll creation page is only shown when explicitly requested.
+		if ( isset( $_GET['create_poll'] ) && '1' === $_GET['create_poll'] ) {
+			// Return the poll creator shortcode output ONLY - don't render poll list.
 			return self::poll_creator_shortcode( array() );
 		}
 
-		// Case 3: If we're here, we're displaying the poll list
+		// Case 3: If we're here, we're displaying the poll list.
 		$atts = shortcode_atts(
 			array(
 				'per_page'  => 10,

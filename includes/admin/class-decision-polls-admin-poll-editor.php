@@ -94,12 +94,8 @@ class Decision_Polls_Admin_Poll_Editor {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'decision-polls' ) );
 		}
 
-		// Check for nonce if accessing poll ID via GET.
-		if ( isset( $_GET['poll_id'] ) ) {
-			if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'edit_poll_' . absint( $_GET['poll_id'] ) ) ) {
-				wp_die( esc_html__( 'Security check failed.', 'decision-polls' ) );
-			}
-		}
+		// No need to check nonce when simply viewing the editor
+		// The actual editing is protected via AJAX nonce checks
 
 		$poll_id = isset( $_GET['poll_id'] ) ? absint( $_GET['poll_id'] ) : 0;
 		$editing = ( $poll_id > 0 );

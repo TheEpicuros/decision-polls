@@ -210,33 +210,28 @@ function submitVote(data, $form) {
 	var pollId = data.poll_id;
 	var pollType = data.poll_type || '';
 	
-	// DIRECT APPROACH: Force a single consistent URL format
-	// This is the simplest and most reliable approach
+	// Get site URL
 	var siteUrl = window.location.protocol + '//' + window.location.host;
 	
-	// For live site: Use polls collection page format with forced parameters
-	var pollsUrl = siteUrl + '/polls/?poll_id=' + pollId + '&show_results=1';
+	// Construct the canonical URL for displaying results for this poll
+	// This is using the same format as WordPress expects for this poll view
+	var pollUrl = '';
 	
-	// For clean URLs: Use direct poll URL format if supported
-	var cleanUrl = siteUrl + '/poll/' + pollId + '/';
+	// Use the format consistent with how WordPress permalinks are set up
+	if (window.location.href.indexOf('/poll/') !== -1) {
+		// Clean URLs are enabled, so use the /poll/{id}/results/ format
+		pollUrl = siteUrl + '/poll/' + pollId + '/results/';
+	} else {
+		// No clean URLs, so use query parameters
+		pollUrl = siteUrl + '/index.php?poll_id=' + pollId + '&show_results=1';
+	}
 	
-	// Choose which URL to use - simpler logic, prefer polls page format
-	var pollUrl = pollsUrl;
+	// Force a cache-busting parameter - essential for browser to get a fresh page
+	pollUrl += (pollUrl.indexOf('?') !== -1 ? '&' : '?') + '_=' + new Date().getTime();
 	
-	// Force a cache-busting parameter
-	pollUrl += '&nocache=' + new Date().getTime();
-	
-	// Save poll URL as a global variable for emergency redirection
-	window.targetPollUrl = pollUrl;
-	
-	// DEBUG: Log URL for debugging
 	console.log('DECISION POLLS - Redirection target URL: ' + pollUrl);
 	
-	// Set a global emergency timeout for redirection in case AJAX succeeds but redirect fails
-	window.emergencyRedirectTimer = setTimeout(function() {
-		console.log('DECISION POLLS - Emergency redirect triggered');
-		window.location.href = window.targetPollUrl;
-	}, 5000); // 5 second timeout
+	// Disable emergency redirect to avoid race conditions with the normal redirect flow
 	
 	// Add nonce to data.
 	data.nonce = $('#decision_polls_nonce').val();
@@ -353,8 +348,7 @@ function submitVote(data, $form) {
 					// Show a clear indication we're about to redirect
 					$message.html('<p class="success">' + decisionPollsL10n.voteSuccess + ' Redirecting to results...</p>').fadeIn();
 					
-					// Clear emergency timer
-					clearTimeout(window.emergencyRedirectTimer);
+					// No emergency timer to clear
 					
 					// IMMEDIATE REDIRECT - don't wait
 					console.log('DECISION POLLS - Immediate redirect to: ' + pollUrl);
@@ -381,8 +375,7 @@ function submitVote(data, $form) {
 				}
 			},
 			error: function(xhr) {
-				// Clear emergency timer
-				clearTimeout(window.emergencyRedirectTimer);
+				// No emergency timer to clear in error case
 				
 				// Re-enable submit button.
 				$submit.prop('disabled', false);

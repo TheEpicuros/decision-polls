@@ -49,6 +49,13 @@ class Decision_Polls_Direct_Vote {
 			wp_die( esc_html__( 'Invalid poll ID.', 'decision-polls' ) );
 		}
 
+		// Verify the poll exists before processing the vote.
+		$poll_model = new Decision_Polls_Poll();
+		$poll = $poll_model->get( $poll_id );
+		if ( ! $poll ) {
+			wp_die( esc_html__( 'Poll not found. Please try again.', 'decision-polls' ) );
+		}
+
 		// Handle different poll types.
 		$poll_type = isset( $_POST['poll_type'] ) ? sanitize_text_field( wp_unslash( $_POST['poll_type'] ) ) : 'standard';
 
@@ -63,16 +70,18 @@ class Decision_Polls_Direct_Vote {
 
 			case 'multiple':
 				if ( isset( $_POST['poll_answers'] ) && is_array( $_POST['poll_answers'] ) ) {
-					foreach ( $_POST['poll_answers'] as $answer_id ) {
-						$answers[] = absint( $answer_id );
+					$poll_answers = array_map( 'absint', wp_unslash( $_POST['poll_answers'] ) );
+					foreach ( $poll_answers as $answer_id ) {
+						$answers[] = $answer_id;
 					}
 				}
 				break;
 
 			case 'ranked':
 				if ( isset( $_POST['ranked_answers'] ) && is_array( $_POST['ranked_answers'] ) ) {
-					foreach ( $_POST['ranked_answers'] as $answer_id ) {
-						$answers[] = absint( $answer_id );
+					$ranked_answers = array_map( 'absint', wp_unslash( $_POST['ranked_answers'] ) );
+					foreach ( $ranked_answers as $answer_id ) {
+						$answers[] = $answer_id;
 					}
 				}
 				break;
@@ -85,10 +94,12 @@ class Decision_Polls_Direct_Vote {
 
 		// Submit the vote directly.
 		$vote_model = new Decision_Polls_Vote();
-		$result     = $vote_model->add( array(
-			'poll_id' => $poll_id,
-			'answers' => $answers,
-		) );
+		$result = $vote_model->add(
+			array(
+				'poll_id' => $poll_id,
+				'answers' => $answers,
+			)
+		);
 
 		if ( ! $result ) {
 			wp_die( esc_html__( 'Failed to submit vote. Please try again.', 'decision-polls' ) );
@@ -98,28 +109,29 @@ class Decision_Polls_Direct_Vote {
 		setcookie( 'decision_polls_show_results_' . $poll_id, '1', time() + 3600, '/' );
 		setcookie( 'decision_polls_refresh_results', '1', time() + 3600, '/' );
 
-		// Get redirect URL.
-		$site_url     = get_site_url();
-		$redirect_url = '';
-
-		// Try different URL formats.
-		if ( get_option( 'permalink_structure' ) ) {
-			// Pretty permalinks are enabled.
-			$redirect_url = $site_url . '/poll/' . $poll_id . '/';
+		// Build the redirect URL using our custom endpoint helper.
+		if ( class_exists( 'Decision_Polls_Custom_Endpoints' ) && method_exists( 'Decision_Polls_Custom_Endpoints', 'get_poll_results_url' ) ) {
+			// Use our custom endpoint method
+			$redirect_url = Decision_Polls_Custom_Endpoints::get_poll_results_url( $poll_id );
 		} else {
-			// Query parameters.
-			$redirect_url = $site_url . '/polls/?poll_id=' . $poll_id . '&show_results=1';
-
-			// Fall back to current page if polls page not found.
-			if ( ! self::page_exists_with_shortcode( 'decision_polls' ) ) {
-				$current_url   = ( isset( $_SERVER['HTTPS'] ) && 'on' === $_SERVER['HTTPS'] ? 'https' : 'http' ) . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-				$clean_url     = strtok( $current_url, '?' );
-				$redirect_url  = $clean_url . '?poll_id=' . $poll_id . '&show_results=1';
+			// Fallback to basic URL construction
+			if ( get_option( 'permalink_structure' ) ) {
+				// Pretty permalinks enabled
+				$redirect_url = home_url( "poll/{$poll_id}/results/" );
+			} else {
+				// No permalinks - use query parameters
+				$redirect_url = add_query_arg(
+					array(
+						'poll_id' => $poll_id,
+						'show_results' => '1',
+					),
+					home_url()
+				);
 			}
 		}
 
-		// Prevent caching.
-		$redirect_url .= ( strpos( $redirect_url, '?' ) !== false ? '&' : '?' ) . 'nocache=' . time();
+		// Prevent caching
+		$redirect_url = add_query_arg( 'nocache', time(), $redirect_url );
 
 		// Redirect to results.
 		wp_safe_redirect( $redirect_url );
