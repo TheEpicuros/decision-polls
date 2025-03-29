@@ -97,7 +97,7 @@ class Custom_Endpoints {
 			if ( $poll_id > 0 ) {
 				// Get poll from database.
 				$poll_model = new Decision_Polls_Poll();
-				$poll = $poll_model->get( $poll_id );
+				$poll       = $poll_model->get( $poll_id );
 
 				if ( ! $poll ) {
 					// If poll doesn't exist, properly set up a 404 response per WP standards.
@@ -106,14 +106,14 @@ class Custom_Endpoints {
 
 					// Properly set up the environment for a 404 page.
 					// This prevents "Attempt to read property on null" errors.
-					$wp_query->post = null;
-					$wp_query->posts = array();
-					$wp_query->queried_object = null;
+					$wp_query->post              = null;
+					$wp_query->posts             = array();
+					$wp_query->queried_object    = null;
 					$wp_query->queried_object_id = 0;
-					$wp_query->is_singular = false;
-					$wp_query->is_page = false;
-					$wp_query->is_archive = false;
-					$wp_query->is_home = false;
+					$wp_query->is_singular       = false;
+					$wp_query->is_page           = false;
+					$wp_query->is_archive        = false;
+					$wp_query->is_home           = false;
 
 					// Let WordPress handle the 404 template.
 					include get_404_template();
@@ -121,7 +121,7 @@ class Custom_Endpoints {
 				}
 
 				// Set up page variables.
-				$wp_query->is_home = false;
+				$wp_query->is_home     = false;
 				$wp_query->is_singular = true;
 
 				// Check if we should show results.
@@ -154,7 +154,7 @@ class Custom_Endpoints {
 		// Check for poll creation action.
 		if ( get_query_var( 'poll_action' ) === 'create' ) {
 			// Set up page variables.
-			$wp_query->is_home = false;
+			$wp_query->is_home     = false;
 			$wp_query->is_singular = true;
 
 			// Display poll creation template.
