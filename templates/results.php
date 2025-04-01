@@ -74,8 +74,8 @@ $last_updated = isset( $results['last_updated'] ) ? $results['last_updated'] : '
 				if ( 'ranked' === $poll_type ) {
 					$bar_class .= ' decision-poll-ranked-bar';
 
-					// Calculate the rank index (assuming results are already sorted by rank).
-					$rank_index = array_search( $result, $results_data, true );
+					// Calculate the rank index using explicit rank field if available, otherwise use array position.
+					$rank_index = isset( $result['rank'] ) ? $result['rank'] - 1 : array_search( $result, $results_data, true );
 					$rank_text  = '';
 
 					// Create rank label (1st, 2nd, 3rd, etc.).

@@ -141,12 +141,16 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 		$results_table = $this->get_table_name( self::RESULTS_TABLE_NAME );
 		$answers_table = $this->get_table_name( 'decision_poll_answers' );
 
+		// Different ordering for ranked polls vs standard/multiple polls
+		$is_ranked = ( $poll['type'] === 'ranked' );
+		$order_by  = $is_ranked ? 'r.votes_count DESC' : 'r.votes_count DESC, a.sort_order ASC';
+
 		$results = $this->wpdb->get_results(
 			$this->wpdb->prepare(
 				"SELECT r.*, a.answer_text FROM $results_table r 
                  JOIN $answers_table a ON r.answer_id = a.id
                  WHERE r.poll_id = %d
-                 ORDER BY r.votes_count DESC, a.sort_order ASC",
+                 ORDER BY $order_by",
 				$poll_id
 			)
 		);
@@ -160,7 +164,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 					"SELECT r.*, a.answer_text FROM $results_table r 
                      JOIN $answers_table a ON r.answer_id = a.id
                      WHERE r.poll_id = %d
-                     ORDER BY r.votes_count DESC, a.sort_order ASC",
+                     ORDER BY $order_by",
 					$poll_id
 				)
 			);
@@ -184,17 +188,27 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 
 		// Format results for API.
 		$formatted_results = array();
+		$rank              = 0;
 		foreach ( $results as $result ) {
-			$formatted_results[] = array(
+			++$rank;
+			$result_data = array(
 				'id'         => (int) $result->answer_id,
 				'text'       => $result->answer_text,
 				'votes'      => (int) $result->votes_count,
 				'percentage' => (float) $result->percentage,
 			);
+
+			// For ranked polls, add explicit rank field
+			if ( $is_ranked ) {
+				$result_data['rank'] = $rank;
+			}
+
+			$formatted_results[] = $result_data;
 		}
 
 		return array(
 			'poll_id'      => (int) $poll_id,
+			'poll_type'    => $poll['type'], // Add poll type to response
 			'total_votes'  => (int) $total_votes,
 			'results'      => $formatted_results,
 			'last_updated' => ! empty( $results ) ? $results[0]->last_calculated : current_time( 'mysql' ),
