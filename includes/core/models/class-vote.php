@@ -65,7 +65,12 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 		$this->wpdb->query( 'START TRANSACTION' );
 
 		try {
-			$success = $this->record_votes( $poll_id, $answers );
+			// Use appropriate method based on poll type.
+			if ( 'ranked' === $poll['type'] ) {
+				$success = $this->record_ranked_votes( $poll_id, $answers );
+			} else {
+				$success = $this->record_votes( $poll_id, $answers );
+			}
 
 			if ( ! $success ) {
 				$this->wpdb->query( 'ROLLBACK' );
@@ -109,7 +114,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 			return $has_voted > 0;
 		} else {
 			// For guests, check by IP.
-			$user_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( $_SERVER['REMOTE_ADDR'] ) : '';
+			$user_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
 
 			$has_voted = $this->wpdb->get_var(
 				$this->wpdb->prepare(
@@ -141,8 +146,12 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 		$results_table = $this->get_table_name( self::RESULTS_TABLE_NAME );
 		$answers_table = $this->get_table_name( 'decision_poll_answers' );
 
-		// Standard ordering by votes count first, then by original sort order.
-		$order_by = 'r.votes_count DESC, a.sort_order ASC';
+		// Different ordering for ranked polls vs standard/multiple polls.
+		$is_ranked = ( $poll['type'] === 'ranked' );
+		
+		// For ranked polls, order by votes_count DESC only (higher points = higher rank).
+		// For standard/multiple polls, use votes_count DESC, then sort_order.
+		$order_by  = $is_ranked ? 'r.votes_count DESC' : 'r.votes_count DESC, a.sort_order ASC';
 
 		$results = $this->wpdb->get_results(
 			$this->wpdb->prepare(
@@ -187,7 +196,9 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 
 		// Format results for API.
 		$formatted_results = array();
+		$rank              = 0;
 		foreach ( $results as $result ) {
+			++$rank;
 			$result_data = array(
 				'id'         => (int) $result->answer_id,
 				'text'       => $result->answer_text,
@@ -195,9 +206,15 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 				'percentage' => (float) $result->percentage,
 			);
 
+			// For ranked polls, add explicit rank field.
+			if ( $is_ranked ) {
+				$result_data['rank'] = $rank;
+			}
+
 			$formatted_results[] = $result_data;
 		}
 
+		// Return the results with poll type for the frontend.
 		return array(
 			'poll_id'      => (int) $poll_id,
 			'poll_type'    => $poll['type'],
@@ -218,7 +235,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 		$votes_table = $this->get_table_name( self::TABLE_NAME );
 
 		$user_id = is_user_logged_in() ? get_current_user_id() : null;
-		$user_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( $_SERVER['REMOTE_ADDR'] ) : '';
+		$user_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
 		$now     = current_time( 'mysql' );
 
 		// Insert vote.
@@ -255,7 +272,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 		$votes_table = $this->get_table_name( self::TABLE_NAME );
 
 		$user_id = is_user_logged_in() ? get_current_user_id() : null;
-		$user_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( $_SERVER['REMOTE_ADDR'] ) : '';
+		$user_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
 		$now     = current_time( 'mysql' );
 
 		// Process each answer.
@@ -285,6 +302,54 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 	}
 
 	/**
+	 * Record ranked votes for ranked choice polls.
+	 *
+	 * @param int   $poll_id Poll ID.
+	 * @param array $ranked_answers Array of answer IDs in order of preference.
+	 * @return bool Whether the votes were recorded.
+	 */
+	public function record_ranked_votes( $poll_id, $ranked_answers ) {
+		$votes_table = $this->get_table_name( self::TABLE_NAME );
+
+		$user_id = is_user_logged_in() ? get_current_user_id() : null;
+		$user_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+		$now     = current_time( 'mysql' );
+
+		// In ranked choice, assign higher vote values to higher ranked choices.
+		// First choice (index 0) gets the highest value.
+		$total_answers = count( $ranked_answers );
+
+		// Process each answer with its rank.
+		foreach ( $ranked_answers as $rank => $answer_id ) {
+			// Reverse the rank for vote value - highest rank gets highest value.
+			// For example, in a poll with 3 options, first choice (rank 0) gets value 3.
+			$vote_value = $total_answers - $rank;
+
+			// Insert vote.
+			$inserted = $this->wpdb->insert(
+				$votes_table,
+				array(
+					'poll_id'    => $poll_id,
+					'answer_id'  => (int) $answer_id,
+					'user_id'    => $user_id,
+					'user_ip'    => $user_ip,
+					'vote_value' => $vote_value,
+					'voted_at'   => $now,
+				)
+			);
+
+			if ( ! $inserted ) {
+				return false;
+			}
+		}
+
+		// Update results cache.
+		$this->update_results_cache( $poll_id );
+
+		return true;
+	}
+
+	/**
 	 * Record votes (internal method used by submit_vote).
 	 *
 	 * @param int   $poll_id Poll ID.
@@ -295,7 +360,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 		$votes_table = $this->get_table_name( self::TABLE_NAME );
 
 		$user_id = is_user_logged_in() ? get_current_user_id() : null;
-		$user_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( $_SERVER['REMOTE_ADDR'] ) : '';
+		$user_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
 		$now     = current_time( 'mysql' );
 
 		// Process each answer.
@@ -346,6 +411,11 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 		$results_table = $this->get_table_name( self::RESULTS_TABLE_NAME );
 		$answers_table = $this->get_table_name( 'decision_poll_answers' );
 
+		// Get poll type.
+		$poll_model = new Decision_Polls_Poll();
+		$poll       = $poll_model->get( $poll_id );
+		$is_ranked  = ( $poll && $poll['type'] === 'ranked' );
+
 		// Clear existing results.
 		$this->wpdb->delete( $results_table, array( 'poll_id' => $poll_id ) );
 
@@ -376,16 +446,34 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 		foreach ( $answers as $answer ) {
 			$answer_id = $answer['id'];
 
-			// For standard/multiple polls, use count.
-			$votes_count = $this->wpdb->get_var(
-				$this->wpdb->prepare(
-					"SELECT COUNT(*) FROM $votes_table WHERE poll_id = %d AND answer_id = %d",
-					$poll_id,
-					$answer_id
-				)
-			);
+			if ( $is_ranked ) {
+				// For ranked polls, use sum of vote values instead of count.
+				// Higher value = better rank.
+				$votes_count = $this->wpdb->get_var(
+					$this->wpdb->prepare(
+						"SELECT SUM(vote_value) FROM $votes_table WHERE poll_id = %d AND answer_id = %d",
+						$poll_id,
+						$answer_id
+					)
+				);
 
-			$percentage = ( $votes_count / $total_voters ) * 100;
+				// Calculate percentage based on max possible points.
+				// If we have 3 voters and 5 choices, max points per choice is 3*5=15.
+				$max_answers  = count( $answers );
+				$max_possible = $total_voters * $max_answers;
+				$percentage   = ( $votes_count / $max_possible ) * 100;
+			} else {
+				// For standard/multiple polls, use count as before.
+				$votes_count = $this->wpdb->get_var(
+					$this->wpdb->prepare(
+						"SELECT COUNT(*) FROM $votes_table WHERE poll_id = %d AND answer_id = %d",
+						$poll_id,
+						$answer_id
+					)
+				);
+
+				$percentage = ( $votes_count / $total_voters ) * 100;
+			}
 
 			// Make sure votes_count is a number.
 			$votes_count = $votes_count ? $votes_count : 0;
@@ -413,8 +501,7 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 	 * @return array Formatted data.
 	 */
 	protected function format_for_db( $data ) {
-		// Base implementation for the abstract method
-		// This method is primarily used for Vote submission which is handled by record_vote()
+		// Base implementation for the abstract method.
 		return $data;
 	}
 
@@ -426,7 +513,6 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 	 */
 	protected function format_for_api( $data ) {
 		// Base implementation for the abstract method.
-		// This method is primarily used for Vote results which is handled by get_results()
 		return (array) $data;
 	}
 }

@@ -29,6 +29,13 @@ class Decision_Polls_Frontend {
 	private $has_poll = false;
 	
 	/**
+	 * Flag for ranked poll shortcode detection.
+	 *
+	 * @var bool
+	 */
+	private $has_ranked_poll = false;
+	
+	/**
 	 * Flag for polls list shortcode detection.
 	 *
 	 * @var bool
@@ -74,6 +81,11 @@ class Decision_Polls_Frontend {
 		if ( has_shortcode( $content, 'decision_poll' ) ) {
 			$this->needs_assets = true;
 			$this->has_poll = true;
+			
+			// Check for ranked choice polls.
+			if ( preg_match( '/decision_poll([^]]*?)type=["\']ranked["\']/', $content ) ) {
+				$this->has_ranked_poll = true;
+			}
 		}
 		
 		// Polls list detection.
@@ -99,6 +111,14 @@ class Decision_Polls_Frontend {
 		$poll_id = isset( $_GET['poll_id'] ) ? absint( $_GET['poll_id'] ) : 0;
 		if ( $poll_id > 0 ) {
 			$this->needs_assets = true;
+			
+			// Get poll to determine type.
+			$poll_model = new Decision_Polls_Poll();
+			$poll = $poll_model->get( $poll_id );
+			
+			if ( $poll && isset( $poll['type'] ) && 'ranked' === $poll['type'] ) {
+				$this->has_ranked_poll = true;
+			}
 			
 			// Add filter to inject poll into the content.
 			add_filter( 'the_content', array( $this, 'inject_poll' ) );
@@ -202,6 +222,12 @@ class Decision_Polls_Frontend {
 			// Common assets.
 			wp_enqueue_style( 'decision-polls' );
 			wp_enqueue_script( 'decision-polls' );
+	
+			// Additional scripts for specific poll types.
+			if ( $this->has_ranked_poll ) {
+				// For ranked choice polls, we use jQuery UI Sortable.
+				wp_enqueue_script( 'jquery-ui-sortable' );
+			}
 		
 			// Localize script with translations and settings.
 			wp_localize_script(

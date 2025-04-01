@@ -132,6 +132,11 @@ class Decision_Polls_Shortcodes {
 		wp_enqueue_style( 'decision-polls' );
 		wp_enqueue_script( 'decision-polls' );
 
+		// Enqueue jQuery UI sortable for ranked polls.
+		if ( 'ranked' === $poll['type'] ) {
+			wp_enqueue_script( 'jquery-ui-sortable' );
+		}
+
 		// Start output buffer.
 		ob_start();
 
@@ -142,6 +147,9 @@ class Decision_Polls_Shortcodes {
 		} else {
 			// Show voting form based on poll type.
 			switch ( $poll['type'] ) {
+				case 'ranked':
+					include DECISION_POLLS_PLUGIN_DIR . 'templates/ranked-poll.php';
+					break;
 				case 'multiple':
 					include DECISION_POLLS_PLUGIN_DIR . 'templates/multiple-poll.php';
 					break;
@@ -253,7 +261,7 @@ class Decision_Polls_Shortcodes {
 	 * @return string Shortcode output.
 	 */
 	public static function poll_creator_shortcode( $atts ) {
-		// Set a flag that this shortcode has been rendered to prevent duplicates
+		// Set a flag that this shortcode has been rendered to prevent duplicates.
 		do_action( 'decision_polls_creator_shortcode_rendered' );
 
 		$atts = shortcode_atts(
@@ -271,8 +279,8 @@ class Decision_Polls_Shortcodes {
 		}
 
 		// Check if login is required.
-		// Temporarily disable login requirement for testing
-		$require_login = 0; // Override the option for testing purposes
+		// Temporarily disable login requirement for testing.
+		$require_login = 0; // Override the option for testing purposes.
 		if ( $require_login && ! is_user_logged_in() ) {
 			return '<div class="decision-polls-error">' .
 				sprintf(

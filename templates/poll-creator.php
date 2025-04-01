@@ -39,6 +39,7 @@ $redirect_url = isset( $atts['redirect'] ) && ! empty( $atts['redirect'] ) ? $at
 			<select name="poll_type" id="poll_type">
 				<option value="standard"><?php esc_html_e( 'Standard (Single Choice)', 'decision-polls' ); ?></option>
 				<option value="multiple"><?php esc_html_e( 'Multiple Choice', 'decision-polls' ); ?></option>
+				<option value="ranked"><?php esc_html_e( 'Ranked Choice', 'decision-polls' ); ?></option>
 			</select>
 		</div>
 		
@@ -102,23 +103,8 @@ jQuery(document).ready(function($) {
 	// Initially hide or show multiple choice options based on selected type.
 	toggleMultipleOptions();
 	
-	// Add a new option field.
-	$addButton.on('click', function(e) {
-		e.preventDefault();
-		
-		var optionCount = $optionsContainer.find('.decision-poll-creator-option').length + 1;
-		var optionHtml = '<div class="decision-poll-creator-option">' +
-			'<input type="text" name="poll_option[]" placeholder="' + decisionPollsL10n.option + ' ' + optionCount + '" required>' +
-			'<button type="button" class="decision-poll-creator-remove-option">' + decisionPollsL10n.remove + '</button>' +
-			'</div>';
-		
-		$optionsContainer.append(optionHtml);
-		
-		// Enable all remove buttons if we have more than 2 options.
-		if (optionCount > 2) {
-			$optionsContainer.find('.decision-poll-creator-remove-option').prop('disabled', false);
-		}
-	});
+	// The click handler for add button is defined in the template's inline script
+	// We don't need to attach it here to avoid duplicates
 	
 	// Remove an option field.
 	$optionsContainer.on('click', '.decision-poll-creator-remove-option', function() {
@@ -136,6 +122,24 @@ jQuery(document).ready(function($) {
 		// Disable remove buttons if we have 2 or fewer options.
 		if ($optionsContainer.find('.decision-poll-creator-option').length <= 2) {
 			$optionsContainer.find('.decision-poll-creator-remove-option').prop('disabled', true);
+		}
+	});
+	
+	// Add a new option field.
+	$addButton.on('click', function(e) {
+		e.preventDefault();
+		
+		var optionCount = $optionsContainer.find('.decision-poll-creator-option').length + 1;
+		var optionHtml = '<div class="decision-poll-creator-option">' +
+			'<input type="text" name="poll_option[]" placeholder="' + decisionPollsL10n.option + ' ' + optionCount + '" required>' +
+			'<button type="button" class="decision-poll-creator-remove-option">' + decisionPollsL10n.remove + '</button>' +
+			'</div>';
+		
+		$optionsContainer.append(optionHtml);
+		
+		// Enable all remove buttons if we have more than 2 options.
+		if (optionCount > 2) {
+			$optionsContainer.find('.decision-poll-creator-remove-option').prop('disabled', false);
 		}
 	});
 	
@@ -165,7 +169,7 @@ jQuery(document).ready(function($) {
 		// Clear previous messages.
 		$message.empty().hide();
 		
-		// Disable submit button to prevent multiple submissions
+		// Disable submit button.
 		$submit.prop('disabled', true);
 		
 		// Show loading indicator
@@ -194,7 +198,7 @@ jQuery(document).ready(function($) {
 		// Validate options.
 		if (options.length < 2) {
 			$message.html('<p class="error">' + decisionPollsL10n.pollCreateError + ': ' + 
-				 '<?php echo esc_js( __( 'At least two poll options are required.', 'decision-polls' ) ); ?></p>').fadeIn();
+					'<?php echo esc_js( __( 'At least two poll options are required.', 'decision-polls' ) ); ?></p>').fadeIn();
 			$submit.prop('disabled', false);
 			return;
 		}
@@ -226,11 +230,6 @@ jQuery(document).ready(function($) {
 						}, 1500);
 						return;
 					}
-					
-					// Clear form.
-					$form[0].reset();
-					$optionsContainer.find('.decision-poll-creator-option').not(':first, :nth-child(2)').remove();
-					$optionsContainer.find('.decision-poll-creator-option input').val('');
 					
 					// Automatically redirect to the poll right away
 					// Use clean URL structure

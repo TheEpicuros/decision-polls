@@ -17,7 +17,14 @@ if ( isset( $_COOKIE['decision_polls_refresh_results'] ) ) {
 		// Clear the cookie.
 		setcookie( 'decision_polls_refresh_results', '', time() - 3600, '/' );
 		// Add meta refresh as absolute last resort (5 second delay).
-		echo '<meta http-equiv="refresh" content="5;url=' . esc_url( add_query_arg( array( 'poll_id' => $poll_id, 'show_results' => '1', 'ts' => time() ), get_permalink() ) ) . '">';
+		echo '<meta http-equiv="refresh" content="5;url=' . esc_url( add_query_arg( 
+			array( 
+				'poll_id' => $poll_id, 
+				'show_results' => '1', 
+				'ts' => time() 
+			), 
+			get_permalink() 
+		) ) . '">';
 	}
 }
 
@@ -34,6 +41,7 @@ $poll_container_id = 'decision-poll-results-' . $poll_id;
 $total_votes  = isset( $results['total_votes'] ) ? absint( $results['total_votes'] ) : 0;
 $results_data = isset( $results['results'] ) ? $results['results'] : array();
 $last_updated = isset( $results['last_updated'] ) ? $results['last_updated'] : '';
+$poll_type    = isset( $poll['type'] ) ? $poll['type'] : 'standard';
 ?>
 
 <div id="<?php echo esc_attr( $poll_container_id ); ?>" class="decision-poll decision-poll-results" data-poll-id="<?php echo esc_attr( $poll_id ); ?>">
@@ -55,22 +63,53 @@ $last_updated = isset( $results['last_updated'] ) ? $results['last_updated'] : '
 
 	<div class="decision-poll-results-list">
 		<?php if ( ! empty( $results_data ) && is_array( $results_data ) ) : ?>
-			<?php foreach ( $results_data as $result ) : ?>
+			<?php foreach ( $results_data as $index => $result ) : ?>
 				<?php
 				$answer_id   = isset( $result['id'] ) ? absint( $result['id'] ) : 0;
 				$answer_text = isset( $result['text'] ) ? esc_html( $result['text'] ) : '';
 				$votes       = isset( $result['votes'] ) ? absint( $result['votes'] ) : 0;
 				$percentage  = isset( $result['percentage'] ) ? floatval( $result['percentage'] ) : 0;
+				$rank        = isset( $result['rank'] ) ? absint( $result['rank'] ) : $index + 1;
 
 				// Format percentage with 1 decimal place.
 				$formatted_percentage = number_format( $percentage, 1 );
 
-				// Set standard class for result bar.
+				// Set class and rank display based on poll type.
 				$bar_class = 'decision-poll-result-bar';
+				$rank_display = '';
+
+				// Special handling for ranked choice polls.
+				if ( 'ranked' === $poll_type ) {
+					$bar_class .= ' decision-poll-ranked-bar';
+					
+					// Create rank label (1st choice, 2nd choice, etc.).
+					switch ( $rank ) {
+						case 1:
+							$rank_text  = esc_html__( '1st choice', 'decision-polls' );
+							$bar_class .= ' rank-first';
+							break;
+						case 2:
+							$rank_text  = esc_html__( '2nd choice', 'decision-polls' );
+							$bar_class .= ' rank-second';
+							break;
+						case 3:
+							$rank_text  = esc_html__( '3rd choice', 'decision-polls' );
+							$bar_class .= ' rank-third';
+							break;
+						default:
+							/* translators: %d: the rank number (4, 5, etc.) */
+							$rank_text  = sprintf( esc_html__( '%dth choice', 'decision-polls' ), $rank );
+							$bar_class .= ' rank-other';
+							break;
+					}
+
+					$rank_display = '<span class="decision-poll-rank-indicator">' . $rank_text . '</span>';
+				}
 				?>
 				<div class="decision-poll-result" data-answer-id="<?php echo esc_attr( $answer_id ); ?>">
 					<div class="decision-poll-result-text">
 						<?php echo esc_html( $answer_text ); ?>
+						<?php echo $rank_display; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Already escaped above ?>
 					</div>
 					<div class="decision-poll-result-bar-container">
 						<div class="<?php echo esc_attr( $bar_class ); ?>" style="width: <?php echo esc_attr( $percentage . '%' ); ?>;">
