@@ -48,12 +48,12 @@ class Decision_Polls_Ranked_Fix_Activator {
 			if ( ! isset( $response['poll_type'] ) ) {
 				$response['poll_type'] = $poll['type'];
 			}
-			
+
 			// Add explicit rank to each result if not already present.
 			$rank = 0;
 			foreach ( $response['results'] as $key => $result ) {
 				if ( ! isset( $result['rank'] ) ) {
-					$rank++;
+					++$rank;
 					$response['results'][ $key ]['rank'] = $rank;
 				}
 			}
