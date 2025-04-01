@@ -1,0 +1,151 @@
+/**
+ * Ranked Polls CSS
+ *
+ * @package Decision_Polls
+ */
+
+/* Ranked poll container */
+.decision-poll-ranked {
+    position: relative;
+    margin: 1.5em 0;
+}
+
+/* Sortable options container */
+.decision-poll-sortable {
+    margin: 1.5em 0;
+    padding: 1em;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Individual draggable option */
+.decision-poll-option {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5em;
+    padding: 0.75em 1em;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: move; /* Basic cursor indication */
+    transition: all 0.2s ease;
+}
+
+/* Hover effects to indicate interactivity */
+.decision-poll-option:hover {
+    border-color: #0073aa;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Style for when an item is being dragged */
+.decision-poll-option.ui-sortable-helper {
+    border-color: #0073aa;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+    background-color: #f0f8ff;
+    z-index: 1000;
+}
+
+/* Style for the placeholder while dragging */
+.decision-poll-sortable .ui-sortable-placeholder {
+    visibility: visible !important;
+    border: 1px dashed #aaa;
+    background-color: #f0f8ff;
+    box-shadow: none;
+    height: 3.5em;
+    margin-bottom: 0.5em;
+}
+
+/* Drag handle */
+.decision-poll-drag-handle {
+    margin-right: 1em;
+    color: #999;
+    cursor: grab;
+}
+
+/* Drag handle when actively dragging */
+.ui-sortable-helper .decision-poll-drag-handle {
+    cursor: grabbing;
+}
+
+/* Rank number indicator */
+.decision-poll-option-rank {
+    display: inline-block;
+    min-width: 2em;
+    height: 2em;
+    line-height: 2em;
+    text-align: center;
+    background-color: #0073aa;
+    color: #fff;
+    border-radius: 50%;
+    margin-right: 1em;
+    font-weight: bold;
+}
+
+/* Option text */
+.decision-poll-option-text {
+    flex: 1;
+    font-size: 1.1em;
+}
+
+/* Results styling for ranked polls */
+.decision-poll-ranked-bar {
+    background-color: #0073aa;
+}
+
+.decision-poll-ranked-bar.rank-first {
+    background-color: #4CAF50; /* Green */
+}
+
+.decision-poll-ranked-bar.rank-second {
+    background-color: #2196F3; /* Blue */
+}
+
+.decision-poll-ranked-bar.rank-third {
+    background-color: #FF9800; /* Orange */
+}
+
+.decision-poll-ranked-bar.rank-other {
+    background-color: #9E9E9E; /* Gray */
+}
+
+/* Rank indicators in results */
+.decision-poll-rank-indicator {
+    display: inline-block;
+    padding: 0.2em 0.6em;
+    margin-right: 0.5em;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+.rank-indicator.rank-first {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.rank-indicator.rank-second {
+    background-color: #e3f2fd;
+    color: #1565c0;
+}
+
+.rank-indicator.rank-third {
+    background-color: #fff3e0;
+    color: #e65100;
+}
+
+.rank-indicator.rank-other {
+    background-color: #f5f5f5;
+    color: #616161;
+}
+
+/* Instructions for users */
+.decision-poll-instructions {
+    margin: 1em 0;
+    padding: 0.75em 1em;
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196F3;
+    color: #0d47a1;
+    font-style: italic;
+}
