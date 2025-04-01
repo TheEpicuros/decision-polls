@@ -143,6 +143,9 @@ class Decision_Polls_Vote extends Decision_Polls_Model {
 
 		// Different ordering for ranked polls vs standard/multiple polls
 		$is_ranked = ( $poll['type'] === 'ranked' );
+		
+		// For ranked polls, order by votes_count DESC only (higher points = higher rank)
+		// For standard/multiple polls, use votes_count DESC, then sort_order
 		$order_by  = $is_ranked ? 'r.votes_count DESC' : 'r.votes_count DESC, a.sort_order ASC';
 
 		$results = $this->wpdb->get_results(

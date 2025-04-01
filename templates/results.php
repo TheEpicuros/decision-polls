@@ -75,6 +75,7 @@ $last_updated = isset( $results['last_updated'] ) ? $results['last_updated'] : '
 					$bar_class .= ' decision-poll-ranked-bar';
 
 					// Calculate the rank index using explicit rank field if available, otherwise use array position.
+					// For ranked polls, we should have the 'rank' field set.
 					$rank_index = isset( $result['rank'] ) ? $result['rank'] - 1 : array_search( $result, $results_data, true );
 					$rank_text  = '';
 
