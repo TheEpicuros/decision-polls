@@ -10,13 +10,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Add last-resort meta refresh if this was reached by a direct vote action and there's no JavaScript
+// Add last-resort meta refresh if this was reached by a direct vote action and there's no JavaScript.
 if ( isset( $_COOKIE['decision_polls_refresh_results'] ) ) {
 	$poll_id = isset( $poll['id'] ) ? absint( $poll['id'] ) : 0;
 	if ( $poll_id > 0 ) {
-		// Clear the cookie
+		// Clear the cookie.
 		setcookie( 'decision_polls_refresh_results', '', time() - 3600, '/' );
-		// Add meta refresh as absolute last resort (5 second delay)
+		// Add meta refresh as absolute last resort (5 second delay).
 		echo '<meta http-equiv="refresh" content="5;url=' . esc_url( add_query_arg( array( 'poll_id' => $poll_id, 'show_results' => '1', 'ts' => time() ), get_permalink() ) ) . '">';
 	}
 }
@@ -65,65 +65,27 @@ $last_updated = isset( $results['last_updated'] ) ? $results['last_updated'] : '
 				// Format percentage with 1 decimal place.
 				$formatted_percentage = number_format( $percentage, 1 );
 
-				// Determine the bar color based on rank.
-				$poll_type    = isset( $poll['type'] ) ? $poll['type'] : 'standard';
-				$bar_class    = 'decision-poll-result-bar';
-				$rank_display = '';
-
-				// Special handling for ranked choice polls.
-				if ( 'ranked' === $poll_type ) {
-					$bar_class .= ' decision-poll-ranked-bar';
-
-					// Calculate the rank index using explicit rank field if available, otherwise use array position.
-					// For ranked polls, we should have the 'rank' field set.
-					$rank_index = isset( $result['rank'] ) ? $result['rank'] - 1 : array_search( $result, $results_data, true );
-					$rank_text  = '';
-
-					// Create rank label (1st, 2nd, 3rd, etc.).
-					switch ( $rank_index + 1 ) {
-						case 1:
-							$rank_text  = esc_html__( '1st choice', 'decision-polls' );
-							$bar_class .= ' rank-first';
-							break;
-						case 2:
-							$rank_text  = esc_html__( '2nd choice', 'decision-polls' );
-							$bar_class .= ' rank-second';
-							break;
-						case 3:
-							$rank_text  = esc_html__( '3rd choice', 'decision-polls' );
-							$bar_class .= ' rank-third';
-							break;
-						default:
-							/* translators: %d: the rank number (4, 5, etc.) */
-							$rank_text  = sprintf( esc_html__( '%dth choice', 'decision-polls' ), $rank_index + 1 );
-							$bar_class .= ' rank-other';
-							break;
-					}
-
-					$rank_display = '<span class="decision-poll-rank-indicator">' . $rank_text . '</span>';
-				}
+				// Set standard class for result bar.
+				$bar_class = 'decision-poll-result-bar';
 				?>
 				<div class="decision-poll-result" data-answer-id="<?php echo esc_attr( $answer_id ); ?>">
 					<div class="decision-poll-result-text">
 						<?php echo esc_html( $answer_text ); ?>
-						<?php echo $rank_display; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Already escaped above ?>
 					</div>
 					<div class="decision-poll-result-bar-container">
 						<div class="<?php echo esc_attr( $bar_class ); ?>" style="width: <?php echo esc_attr( $percentage . '%' ); ?>;">
 							<span class="decision-poll-result-percentage"><?php echo esc_html( $formatted_percentage . '%' ); ?></span>
 						</div>
 					</div>
-					<?php if ( 'ranked' !== $poll_type ) : ?>
-						<div class="decision-poll-result-votes">
-							<?php
-							printf(
-								/* translators: %d: number of votes for this option */
-								esc_html( _n( '%d vote', '%d votes', $votes, 'decision-polls' ) ),
-								esc_html( $votes )
-							);
-							?>
-						</div>
-					<?php endif; ?>
+					<div class="decision-poll-result-votes">
+						<?php
+						printf(
+							/* translators: %d: number of votes for this option */
+							esc_html( _n( '%d vote', '%d votes', $votes, 'decision-polls' ) ),
+							esc_html( $votes )
+						);
+						?>
+					</div>
 				</div>
 			<?php endforeach; ?>
 		<?php else : ?>

@@ -39,7 +39,6 @@ $redirect_url = isset( $atts['redirect'] ) && ! empty( $atts['redirect'] ) ? $at
 			<select name="poll_type" id="poll_type">
 				<option value="standard"><?php esc_html_e( 'Standard (Single Choice)', 'decision-polls' ); ?></option>
 				<option value="multiple"><?php esc_html_e( 'Multiple Choice', 'decision-polls' ); ?></option>
-				<option value="ranked"><?php esc_html_e( 'Ranked Choice', 'decision-polls' ); ?></option>
 			</select>
 		</div>
 		

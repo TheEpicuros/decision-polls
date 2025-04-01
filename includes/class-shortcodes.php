@@ -132,10 +132,6 @@ class Decision_Polls_Shortcodes {
 		wp_enqueue_style( 'decision-polls' );
 		wp_enqueue_script( 'decision-polls' );
 
-		if ( 'ranked' === $poll['type'] ) {
-			wp_enqueue_script( 'jquery-ui-sortable' );
-		}
-
 		// Start output buffer.
 		ob_start();
 
@@ -144,11 +140,8 @@ class Decision_Polls_Shortcodes {
 			// Show results.
 			include DECISION_POLLS_PLUGIN_DIR . 'templates/results.php';
 		} else {
-			// Show voting form.
+			// Show voting form based on poll type.
 			switch ( $poll['type'] ) {
-				case 'ranked':
-					include DECISION_POLLS_PLUGIN_DIR . 'templates/ranked-poll.php';
-					break;
 				case 'multiple':
 					include DECISION_POLLS_PLUGIN_DIR . 'templates/multiple-poll.php';
 					break;

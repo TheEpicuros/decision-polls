@@ -19,11 +19,6 @@
 			initMultiplePoll($(this));
 		});
 
-		// Initialize ranked choice polls.
-		$('.decision-poll-ranked').each(function() {
-			initRankedPoll($(this));
-		});
-
 		// Initialize poll creator if present.
 		if ($('.decision-poll-creator').length) {
 			initPollCreator();
@@ -135,70 +130,6 @@
 	}
 
 	/**
-	 * Initialize a ranked choice poll.
-	 *
-	 * @param {Object} $container The poll container jQuery object.
-	 */
-	function initRankedPoll($container) {
-		var $form = $container.find('.decision-poll-form');
-		var $sortable = $container.find('.decision-poll-sortable');
-		
-		// Initialize sortable for drag and drop ranking.
-		$sortable.sortable({
-			handle: '.decision-poll-drag-handle',
-			axis: 'y',
-			containment: 'parent',
-			update: function(event, ui) {
-				// Update rank numbers and hidden inputs.
-				updateRanks($sortable);
-			}
-		});
-		
-		// Handle form submission.
-		$form.on('submit', function(e) {
-			e.preventDefault();
-			
-			var $message = $form.find('.decision-poll-message');
-			var $submit = $form.find('.decision-poll-submit');
-			var pollId = $form.find('input[name="poll_id"]').val();
-			var rankedAnswers = $form.find('input[name="ranked_answers[]"]').map(function() {
-				return $(this).val();
-			}).get();
-			
-			// Clear previous messages.
-			$message.empty().hide();
-			
-			// Disable submit button.
-			$submit.prop('disabled', true);
-			
-			// Submit vote via AJAX.
-			submitVote({
-				poll_id: pollId,
-				ranked_answers: rankedAnswers,
-				poll_type: 'ranked'
-			}, $form);
-		});
-	}
-
-	/**
-	 * Update rank numbers and hidden inputs after sorting.
-	 *
-	 * @param {Object} $sortable The sortable container jQuery object.
-	 */
-	function updateRanks($sortable) {
-		$sortable.find('.decision-poll-option').each(function(index) {
-			var $option = $(this);
-			var answerId = $option.data('answer-id');
-			
-			// Update visible rank number.
-			$option.find('.decision-poll-option-rank').text(index + 1);
-			
-			// Update hidden input value.
-			$option.find('input[name="ranked_answers[]"]').val(answerId);
-		});
-	}
-
-	/**
 	 * Submit a vote via AJAX.
 	 *
 	 * @param {Object} data     The data to submit.
@@ -239,16 +170,13 @@ function submitVote(data, $form) {
 	// Remove poll_id from data as it's in the URL
 	delete data.poll_id;
 	
-	// Convert answer_id/answer_ids/ranked_answers to answers format
+	// Convert answer_id/answer_ids to answers format
 	if (data.answer_id) {
 		data.answers = [data.answer_id];
 		delete data.answer_id;
 	} else if (data.answer_ids) {
 		data.answers = data.answer_ids;
 		delete data.answer_ids;
-	} else if (data.ranked_answers) {
-		data.answers = data.ranked_answers;
-		delete data.ranked_answers;
 	}
 	
 	$.ajax({
@@ -261,8 +189,6 @@ function submitVote(data, $form) {
 			success: function(response) {
 				// Show success message.
 				$message.html('<p class="success">' + decisionPollsL10n.voteSuccess + '</p>').fadeIn();
-				
-				// Process all poll types, with special handling for ranked choice
 				
 				// If results are available, update the display.
 				if (response.data && response.data.results) {
@@ -277,58 +203,20 @@ function submitVote(data, $form) {
 							decisionPollsL10n.totalVotes.replace('{total}', results.total_votes) + 
 							'</div>';
 						
-						// Special handling for ranked choice polls
-						if (pollType === 'ranked') {
-							// Sort results by votes before displaying
-							results.results.sort(function(a, b) {
-								return b.votes - a.votes;
-							});
-							
-							// Add results for each option with rank indicators
-							$.each(results.results, function(index, result) {
-								var rankClass = '';
-								var rankLabel = '';
-								
-								// Add rank indicators for top choices
-								if (index === 0) {
-									rankClass = 'rank-first';
-									rankLabel = '<span class="rank-indicator rank-first">1st</span> ';
-								} else if (index === 1) {
-									rankClass = 'rank-second';
-									rankLabel = '<span class="rank-indicator rank-second">2nd</span> ';
-								} else if (index === 2) {
-									rankClass = 'rank-third';
-									rankLabel = '<span class="rank-indicator rank-third">3rd</span> ';
-								}
-								
-								resultsHtml += '<div class="decision-poll-result">' +
-									'<div class="decision-poll-result-text">' + rankLabel + result.text + '</div>' +
-									'<div class="decision-poll-result-bar-container">' +
-										'<div class="decision-poll-result-bar decision-poll-ranked-bar ' + rankClass + '" style="width: ' + result.percentage + '%;">' +
-											'<span class="decision-poll-result-percentage">' + Math.round(result.percentage * 10) / 10 + '%</span>' +
-										'</div>' +
+						// Standard display for poll types
+						$.each(results.results, function(index, result) {
+							resultsHtml += '<div class="decision-poll-result">' +
+								'<div class="decision-poll-result-text">' + result.text + '</div>' +
+								'<div class="decision-poll-result-bar-container">' +
+									'<div class="decision-poll-result-bar" style="width: ' + result.percentage + '%;">' +
+										'<span class="decision-poll-result-percentage">' + Math.round(result.percentage * 10) / 10 + '%</span>' +
 									'</div>' +
-									'<div class="decision-poll-result-votes">' + 
-										decisionPollsL10n.votes.replace('{votes}', result.votes) + 
-									'</div>' +
-								'</div>';
-							});
-						} else {
-							// Standard display for other poll types
-							$.each(results.results, function(index, result) {
-								resultsHtml += '<div class="decision-poll-result">' +
-									'<div class="decision-poll-result-text">' + result.text + '</div>' +
-									'<div class="decision-poll-result-bar-container">' +
-										'<div class="decision-poll-result-bar" style="width: ' + result.percentage + '%;">' +
-											'<span class="decision-poll-result-percentage">' + Math.round(result.percentage * 10) / 10 + '%</span>' +
-										'</div>' +
-									'</div>' +
-									'<div class="decision-poll-result-votes">' + 
-										decisionPollsL10n.votes.replace('{votes}', result.votes) + 
-									'</div>' +
-								'</div>';
-							});
-						}
+								'</div>' +
+								'<div class="decision-poll-result-votes">' + 
+									decisionPollsL10n.votes.replace('{votes}', result.votes) + 
+								'</div>' +
+							'</div>';
+						});
 						
 						resultsHtml += '</div>';
 						
