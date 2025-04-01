@@ -54,14 +54,14 @@ class Decision_Polls_Admin_Debug {
 	 * Render the refresh rules page.
 	 */
 	public static function render_refresh_rules_page() {
-		require_once DECISION_POLLS_PLUGIN_DIR . 'refresh-rules.php';
+		require_once DECISION_POLLS_PLUGIN_DIR . 'tools/refresh-rules.php';
 	}
 
 	/**
 	 * Render the test endpoints page.
 	 */
 	public static function render_test_endpoints_page() {
-		require_once DECISION_POLLS_PLUGIN_DIR . 'test-endpoints.php';
+		require_once DECISION_POLLS_PLUGIN_DIR . 'tools/test-endpoints.php';
 	}
 }
 
